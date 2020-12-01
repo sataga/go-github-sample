@@ -37,3 +37,8 @@ func (r *userSupportRepository) GetUpdatedSupportIssues(since, until time.Time) 
 func (r *userSupportRepository) GetCurrentOpenSupportIssues() ([]*github.Issue, error) {
 	return r.ghClient.ListRepoIssues("sataga", "issue-warehouse", "open", []string{"support"})
 }
+
+func (r *userSupportRepository) GetCurrentOpenAnyLabelsSupportIssues(labels []string) ([]*github.Issue, error) {
+	labels = append(labels, "support")
+	return r.ghClient.ListRepoIssues("sataga", "issue-warehouse", "open", labels)
+}

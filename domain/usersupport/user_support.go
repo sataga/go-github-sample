@@ -18,6 +18,7 @@ type UserSupport interface {
 type Repository interface {
 	GetUpdatedSupportIssues(since, until time.Time) ([]*github.Issue, error)
 	GetCurrentOpenSupportIssues() ([]*github.Issue, error)
+	GetCurrentOpenAnyLabelsSupportIssues(labels []string) ([]*github.Issue, error)
 }
 
 type userSupport struct {
@@ -26,12 +27,18 @@ type userSupport struct {
 
 // Stats is stats data from GitHub
 type Stats struct {
-	NumCreatedIssues     int                      `yaml:"num_created_issues"`
-	NumClosedIssues      int                      `yaml:"num_closed_issues"`
-	NumOpenIssues        int                      `yaml:"num_open_issues`
-	NumUpdatedIssues     int                      `yaml:"num_updated_issues`
-	NumCommentsPerIssue  map[string]int           `yaml:"num_comments_per_issue`
-	OpenDurationPerIssue map[string]time.Duration `yaml:"open_duration_per_issue"`
+	NumCreatedIssues                int                      `yaml:"num_created_issues"`
+	NumClosedIssues                 int                      `yaml:"num_closed_issues"`
+	UrgencyHighIssues               int                      `yaml:"num_urgency_high_issues`
+	UrgencyLowIssues                int                      `yaml:"num_urgency_low_issues`
+	UrgencyHighDifficultyHighIssues int                      `yaml:"num_urgency_high_difficulty_high_issues`
+	UrgencyHighDifficultyLowIssues  int                      `yaml:"num_urgency_high_difficulty_low_issues`
+	UrgencyLowDifficultyHighIssues  int                      `yaml:"num_urgency_low_difficulty_high_issues`
+	UrgencyLowDifficultyLowIssues   int                      `yaml:"num_urgency_low_difficulty_low_issues`
+	NumOpenIssues                   int                      `yaml:"num_open_issues`
+	NumUpdatedIssues                int                      `yaml:"num_updated_issues`
+	NumCommentsPerIssue             map[string]int           `yaml:"num_comments_per_issue`
+	OpenDurationPerIssue            map[string]time.Duration `yaml:"open_duration_per_issue"`
 }
 
 // NewUserSupport creates UserSupport
@@ -56,6 +63,26 @@ func (us *userSupport) GetUserSupportStats(since, until time.Time) (*Stats, erro
 		NumOpenIssues:        len(opi),
 		NumCommentsPerIssue:  make(map[string]int, len(upi)),
 		OpenDurationPerIssue: make(map[string]time.Duration, len(upi)),
+	}
+	for _, issue := range opi {
+		if labelContains(issue.Labels, "緊急度:高") || labelContains(issue.Labels, "緊急度:中") {
+			usStats.UrgencyHighIssues++
+			if labelContains(issue.Labels, "難易度:高") {
+				usStats.UrgencyHighDifficultyHighIssues++
+			}
+			if labelContains(issue.Labels, "難易度:低") {
+				usStats.UrgencyHighDifficultyLowIssues++
+			}
+		}
+		if labelContains(issue.Labels, "緊急度:低") {
+			usStats.UrgencyLowIssues++
+			if labelContains(issue.Labels, "難易度:高") {
+				usStats.UrgencyLowDifficultyHighIssues++
+			}
+			if labelContains(issue.Labels, "難易度:低") {
+				usStats.UrgencyLowDifficultyLowIssues++
+			}
+		}
 	}
 	numCreated, numClosed := 0, 0
 	for _, issue := range upi {
@@ -84,11 +111,16 @@ func (us *userSupport) GetUserSupportStats(since, until time.Time) (*Stats, erro
 func (s *Stats) GenReport() string {
 	var sb strings.Builder
 	sb.WriteString("項目, 情報\n")
-	sb.WriteString(fmt.Sprintf("対応が必要なチケット数, %d\n", s.NumOpenIssues))
+	sb.WriteString(fmt.Sprintf("Openチケット数, %d\n", s.NumOpenIssues))
 	sb.WriteString(fmt.Sprintf("新規作成されたチケット数, %d\n", s.NumCreatedIssues))
-	sb.WriteString(fmt.Sprintf("対応したチケット数, %d\n", s.NumUpdatedIssues))
+	sb.WriteString(fmt.Sprintf("情報更新されたチケット数, %d\n", s.NumUpdatedIssues))
 	sb.WriteString(fmt.Sprintf("クローズしたチケット数, %d\n", s.NumClosedIssues))
-
+	sb.WriteString(fmt.Sprintf("緊急度:高 のチケット数, %d\n", s.UrgencyHighIssues))
+	sb.WriteString(fmt.Sprintf("かつ、難易度:高 のチケット数, %d\n", s.UrgencyHighDifficultyHighIssues))
+	sb.WriteString(fmt.Sprintf("かつ、難易度:低 のチケット数, %d\n", s.UrgencyHighDifficultyLowIssues))
+	sb.WriteString(fmt.Sprintf("緊急度:低 のチケット数, %d\n", s.UrgencyLowIssues))
+	sb.WriteString(fmt.Sprintf("かつ、難易度:高 のチケット数, %d\n", s.UrgencyLowDifficultyHighIssues))
+	sb.WriteString(fmt.Sprintf("かつ、難易度:低 のチケット数, %d\n", s.UrgencyLowDifficultyLowIssues))
 	{
 		// 経過時間を出すロジック
 		type kv struct {
@@ -103,16 +135,26 @@ func (s *Stats) GenReport() string {
 		sort.Slice(kvArr, func(i, j int) bool {
 			return kvArr[i].Val > kvArr[j].Val
 		})
-		for _, kv := range kvArr{
+		for _, kv := range kvArr {
 			// if >=10 {
 			// 	break
 			// }
 			totalHours := int(kv.Val.Hours())
 			dates := totalHours / 24
 			hours := totalHours % 24
-			sb.WriteString(fmt.Sprintf("%s, %dd %dh\n",kv.Key, dates, hours))
+			sb.WriteString(fmt.Sprintf("%s, %dd %dh\n", kv.Key, dates, hours))
 		}
 	}
 
 	return sb.String()
+}
+
+//配列の中に特定の文字列が含まれるかを返す
+func labelContains(arr []github.Label, str string) bool {
+	for _, v := range arr {
+		if *v.Name == str {
+			return true
+		}
+	}
+	return false
 }
