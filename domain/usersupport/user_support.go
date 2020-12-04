@@ -29,15 +29,15 @@ type userSupport struct {
 type Stats struct {
 	NumCreatedIssues                int                      `yaml:"num_created_issues"`
 	NumClosedIssues                 int                      `yaml:"num_closed_issues"`
-	UrgencyHighIssues               int                      `yaml:"num_urgency_high_issues`
-	UrgencyLowIssues                int                      `yaml:"num_urgency_low_issues`
-	UrgencyHighDifficultyHighIssues int                      `yaml:"num_urgency_high_difficulty_high_issues`
-	UrgencyHighDifficultyLowIssues  int                      `yaml:"num_urgency_high_difficulty_low_issues`
-	UrgencyLowDifficultyHighIssues  int                      `yaml:"num_urgency_low_difficulty_high_issues`
-	UrgencyLowDifficultyLowIssues   int                      `yaml:"num_urgency_low_difficulty_low_issues`
-	NumOpenIssues                   int                      `yaml:"num_open_issues`
-	NumUpdatedIssues                int                      `yaml:"num_updated_issues`
-	NumCommentsPerIssue             map[string]int           `yaml:"num_comments_per_issue`
+	UrgencyHighIssues               int                      `yaml:"num_urgency_high_issues"`
+	UrgencyLowIssues                int                      `yaml:"num_urgency_low_issues"`
+	UrgencyHighDifficultyHighIssues int                      `yaml:"num_urgency_high_difficulty_high_issues"`
+	UrgencyHighDifficultyLowIssues  int                      `yaml:"num_urgency_high_difficulty_low_issues"`
+	UrgencyLowDifficultyHighIssues  int                      `yaml:"num_urgency_low_difficulty_high_issues"`
+	UrgencyLowDifficultyLowIssues   int                      `yaml:"num_urgency_low_difficulty_low_issues"`
+	NumOpenIssues                   int                      `yaml:"num_open_issues"`
+	NumUpdatedIssues                int                      `yaml:"num_updated_issues"`
+	NumCommentsPerIssue             map[string]int           `yaml:"num_comments_per_issue"`
 	OpenDurationPerIssue            map[string]time.Duration `yaml:"open_duration_per_issue"`
 }
 
