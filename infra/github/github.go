@@ -4,14 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"path"
+	"time"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
 // Client is a interface that handle about github
 type Client interface {
+	Clone(repoURI string, dir string) (*git.Repository, error)
+	Commit(r *git.Repository, msg string) error
+	Push(r *git.Repository) error
+	PullRequest(owner, repo, title, head, body, baseBranch string) (string, error)
+	ListRepoIssuesSince(owner, repo string, since time.Time, state string, labels []string) ([]*github.Issue, error)
 	ListRepoIssues(owner, repo string, state string, labels []string) ([]*github.Issue, error)
 }
 
@@ -80,6 +90,21 @@ func listRepoIssues(listFunc func(pageIdx int) ([]*github.Issue, *github.Respons
 	return issues, nil
 }
 
+// ListRepoIssues lists issues since
+func (c *ghclient) ListRepoIssuesSince(owner, repo string, since time.Time, state string, labels []string) ([]*github.Issue, error) {
+	return listRepoIssues(func(pageIdx int) ([]*github.Issue, *github.Response, error) {
+		return c.client.Issues.ListByRepo(c.ctx, owner, repo, &github.IssueListByRepoOptions{
+			State:  state,
+			Labels: labels,
+			Since:  since,
+			ListOptions: github.ListOptions{
+				Page:    pageIdx,
+				PerPage: 30,
+			},
+		})
+	})
+}
+
 // ListRepoIssues lists issues
 func (c *ghclient) ListRepoIssues(owner, repo string, state string, labels []string) ([]*github.Issue, error) {
 	return listRepoIssues(func(pageIdx int) ([]*github.Issue, *github.Response, error) {
@@ -92,4 +117,57 @@ func (c *ghclient) ListRepoIssues(owner, repo string, state string, labels []str
 			},
 		})
 	})
+}
+
+func (c *ghclient) Clone(repoURI string, dir string) (*git.Repository, error) {
+	o := &git.CloneOptions{
+		Auth: &http.BasicAuth{
+			Username: c.user,
+			Password: c.token,
+		},
+		URL: repoURI,
+	}
+	return git.PlainClone(dir, false, o)
+}
+
+func (c *ghclient) Commit(repo *git.Repository, msg string) error {
+	w, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+	o := &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  c.user,
+			Email: c.mail,
+			When:  time.Now(),
+		},
+	}
+	_, err = w.Commit(msg, o)
+	return err
+}
+
+func (c *ghclient) Push(repo *git.Repository) error {
+	o := &git.PushOptions{
+		Auth: &http.BasicAuth{
+			Username: c.user,
+			Password: c.token,
+		},
+	}
+	return repo.Push(o)
+}
+
+func (c *ghclient) PullRequest(owner, repo, title, head, body, baseBranch string) (string, error) {
+	npr := github.NewPullRequest{
+		Title: &title,
+		Head:  &head,
+		Base:  &baseBranch,
+		Body:  &body,
+	}
+	pr, _, err := c.client.PullRequests.Create(c.ctx, owner, repo, &npr)
+	if err != nil {
+		return "", fmt.Errorf("creating PullRequest : %s", err)
+	}
+	prURL := pr.GetHTMLURL()
+	log.Printf("PullRequest created: %s", prURL)
+	return prURL, nil
 }
