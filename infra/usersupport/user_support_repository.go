@@ -42,3 +42,7 @@ func (r *userSupportRepository) GetCurrentOpenAnyLabelsSupportIssues(labels []st
 	labels = append(labels, "support")
 	return r.ghClient.ListRepoIssues("sataga", "issue-warehouse", "open", labels)
 }
+
+func (r *userSupportRepository) GetCurrentRepoLabels() ([]*github.Label, error) {
+	return r.ghClient.ListRepoLabels("sataga", "issue-warehouse")
+}
