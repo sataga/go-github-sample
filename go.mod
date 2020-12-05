@@ -9,4 +9,5 @@ require (
 	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
 	golang.org/x/tools v0.0.0-20200825202427-b303f430e36d
 	gopkg.in/src-d/go-git.v4 v4.13.1
+	k8s.io/apimachinery v0.19.4
 )
