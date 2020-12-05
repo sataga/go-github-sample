@@ -46,3 +46,7 @@ func (r *userSupportRepository) GetCurrentOpenAnyLabelsSupportIssues(labels []st
 func (r *userSupportRepository) GetCurrentRepoLabels() ([]*github.Label, error) {
 	return r.ghClient.ListRepoLabels("sataga", "issue-warehouse")
 }
+
+func (r *userSupportRepository) GetLabelsByQuery(repoID int64, query string) (*github.LabelsSearchResult, *github.Response, error) {
+	return r.ghClient.SearchRepoLabels(repoID, query)
+}

@@ -20,6 +20,7 @@ type Repository interface {
 	GetCurrentOpenSupportIssues() ([]*github.Issue, error)
 	GetCurrentOpenAnyLabelsSupportIssues(labels []string) ([]*github.Issue, error)
 	GetCurrentRepoLabels() ([]*github.Label, error)
+	GetLabelsByQuery(repoID int64, query string) (*github.LabelsSearchResult, *github.Response, error)
 }
 
 type userSupport struct {
@@ -64,6 +65,9 @@ func (us *userSupport) GetUserSupportStats(since, until time.Time) (*Stats, erro
 		return nil, fmt.Errorf("get label list : %s", err)
 	}
 	fmt.Println(labels)
+
+	slabels, _, _ := us.repo.GetLabelsByQuery(233058313, "keyword:")
+	fmt.Println(slabels)
 
 	usStats := &Stats{
 		NumUpdatedIssues:     len(upi),
