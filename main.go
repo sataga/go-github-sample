@@ -9,6 +9,7 @@ import (
 
 	dus "github.com/sataga/go-github-sample/domain/usersupport"
 	igh "github.com/sataga/go-github-sample/infra/github"
+	"github.com/sataga/go-github-sample/infra/slack"
 	ius "github.com/sataga/go-github-sample/infra/usersupport"
 )
 
@@ -74,5 +75,13 @@ func main() {
 		}
 		fmt.Printf("UserSupportStats From: %s, Until: %s\n", since, until)
 		fmt.Printf("%s", usStats.GenReport())
+	case "slacktest":
+		channel := "times_t-sataga"
+		username := "t-sataga"
+		text := "hogehoge"
+		_, err := slack.PostMessage(channel, username, text)
+		if err != nil {
+			log.Fatalf("slack post message failed: %s", err)
+		}
 	}
 }
