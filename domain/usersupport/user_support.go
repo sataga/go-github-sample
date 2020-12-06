@@ -59,6 +59,7 @@ type dailyStats struct {
 type NotUpdatedIssues struct {
 	Title        string        `yaml:"not_updated_issues_of_title"`
 	URL          string        `yaml:"not_updated_issues_of_issue_url"`
+	Assign       string        `yaml:"not_updated_issues_of_assign"`
 	NumComments  int           `yaml:"not_updated_issues_of_num_comment"`
 	OpenDuration time.Duration `yaml:"not_updated_issues_of_open_duration"`
 }
@@ -100,10 +101,20 @@ func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error)
 		} else {
 			duration = issue.UpdatedAt.Sub(*issue.CreatedAt)
 		}
+
+		var assigns []string
+		if issue.Assignees != nil {
+			for _, assign := range issue.Assignees {
+				assigns = append(assigns, "@"+*assign.Login)
+			}
+			// assign := strings.Join(, ",")
+		}
+
 		if issue.Title != nil && issue.URL != nil && issue.Comments != nil {
 			dailyStats.NotUpdatedIssues[i] = &NotUpdatedIssues{
 				Title:        *issue.Title,
 				URL:          *issue.URL,
+				Assign:       strings.Join(assigns, ","),
 				NumComments:  *issue.Comments,
 				OpenDuration: duration,
 			}
@@ -126,7 +137,8 @@ func (s *dailyStats) GetDailyReportStats() string {
 		dates := totalHours / 24
 		hours := totalHours % 24
 		sb.WriteString(fmt.Sprintf("- <%s|%s> ", issue.URL, issue.Title))
-		sb.WriteString(fmt.Sprintf("%dd %dh\n", dates, hours))
+		sb.WriteString(fmt.Sprintf("%dd %dh ", dates, hours))
+		sb.WriteString(fmt.Sprintf("%s\n", issue.Assign))
 	}
 
 	return sb.String()

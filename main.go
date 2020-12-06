@@ -76,8 +76,7 @@ func main() {
 		fmt.Printf("UserSupportStats From: %s, Until: %s\n", since, until)
 		fmt.Printf("%s", usStats.GenReport())
 	case "daily-report":
-		// until := now.Add(-168 * time.Hour)
-		until := now.Add(-24 * time.Hour)
+		until := now.Add(-168 * time.Hour)
 		usrepo := ius.NewUsersupportRepository(ghcli)
 		us := dus.NewUserSupport(usrepo)
 		dairyStats, err := us.GetDailyReportStats(until)
