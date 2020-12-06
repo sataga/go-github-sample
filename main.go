@@ -75,6 +75,26 @@ func main() {
 		}
 		fmt.Printf("UserSupportStats From: %s, Until: %s\n", since, until)
 		fmt.Printf("%s", usStats.GenReport())
+	case "daily-report":
+		// until := now.Add(-168 * time.Hour)
+		until := now.Add(-24 * time.Hour)
+		usrepo := ius.NewUsersupportRepository(ghcli)
+		us := dus.NewUserSupport(usrepo)
+		dairyStats, err := us.GetDailyReportStats(until)
+		if err != nil {
+			log.Fatalf("get user support stats: %s", err)
+		}
+		fmt.Printf("dailyReportStats Until: %s\n", until)
+		fmt.Printf("%s", dairyStats.GetDailyReportStats())
+
+		channel := "times_t-sataga"
+		username := "t-sataga"
+		result, err := slack.PostMessage(channel, username, dairyStats.GetDailyReportStats())
+		fmt.Println(result)
+		if err != nil {
+			log.Fatalf("slack post message failed: %s", err)
+		}
+
 	case "slacktest":
 		channel := "times_t-sataga"
 		username := "t-sataga"
