@@ -89,8 +89,7 @@ func main() {
 
 		channel := "times_t-sataga"
 		username := "t-sataga"
-		result, err := slack.PostMessage(channel, username, dairyStats.GetDailyReportStats())
-		fmt.Println(result)
+		_, err = slack.PostMessage(channel, username, dairyStats.GetDailyReportStats())
 		if err != nil {
 			log.Fatalf("slack post message failed: %s", err)
 		}
