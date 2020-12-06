@@ -12,13 +12,15 @@ import (
 // UserSupport is interface for getting user support info
 type UserSupport interface {
 	GetUserSupportStats(since, until time.Time) (*Stats, error)
+	GetDailyReportStats(until time.Time) (*dailyStats, error)
 }
 
 // Repository r/w data which usersupport domain requires
 type Repository interface {
-	GetUpdatedSupportIssues(since, until time.Time) ([]*github.Issue, error)
+	GetUpdatedSupportIssues(state string, since, until time.Time) ([]*github.Issue, error)
+	GetCurrentOpenNotUpdatedSupportIssues(until time.Time) ([]*github.Issue, error)
 	GetCurrentOpenSupportIssues() ([]*github.Issue, error)
-	GetCurrentOpenAnyLabelsSupportIssues(labels []string) ([]*github.Issue, error)
+	GetCurrentOpenAnyLabelsSupportIssues(state string, labels []string) ([]*github.Issue, error)
 	GetCurrentRepoLabels() ([]*github.Label, error)
 	GetLabelsByQuery(repoID int64, query string) (*github.LabelsSearchResult, *github.Response, error)
 }
@@ -43,6 +45,25 @@ type Stats struct {
 	OpenDurationPerIssue            map[string]time.Duration `yaml:"open_duration_per_issue"`
 }
 
+// dailyStats is stats open data from GitHub
+type dailyStats struct {
+	NumNotUpdatedIssues int                       `yaml:"num_not_updated_issues"`
+	NumTeamAResponse    int                       `yaml:"num_team_a_response"`
+	NumTeamBResponse    int                       `yaml:"num_team_b_response"`
+	UrgencyHighIssues   int                       `yaml:"num_urgency_high_issues"`
+	UrgencyLowIssues    int                       `yaml:"num_urgency_low_issues"`
+	NotUpdatedIssues    map[int]*NotUpdatedIssues `yaml:"not_updated_issues"`
+}
+
+// NotUpdatedIssues is dailyStats of datail
+type NotUpdatedIssues struct {
+	Title        string        `yaml:"not_updated_issues_of_title"`
+	URL          string        `yaml:"not_updated_issues_of_issue_url"`
+	Assign       string        `yaml:"not_updated_issues_of_assign"`
+	NumComments  int           `yaml:"not_updated_issues_of_num_comment"`
+	OpenDuration time.Duration `yaml:"not_updated_issues_of_open_duration"`
+}
+
 // NewUserSupport creates UserSupport
 func NewUserSupport(repo Repository) UserSupport {
 	return &userSupport{
@@ -50,9 +71,83 @@ func NewUserSupport(repo Repository) UserSupport {
 	}
 }
 
+// GetDailryReport
+func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error) {
+	opi, err := us.repo.GetCurrentOpenNotUpdatedSupportIssues(until)
+	if err != nil {
+		return nil, fmt.Errorf("get open issues : %s", err)
+	}
+	dailyStats := &dailyStats{
+		NumNotUpdatedIssues: len(opi),
+		NotUpdatedIssues:    make(map[int]*NotUpdatedIssues, len(opi)),
+	}
+	for i, issue := range opi {
+		if labelContains(issue.Labels, "緊急度:高") || labelContains(issue.Labels, "緊急度:中") {
+			dailyStats.UrgencyHighIssues++
+		}
+		if labelContains(issue.Labels, "緊急度:低") {
+			dailyStats.UrgencyLowIssues++
+		}
+		if labelContains(issue.Labels, "Team-A") {
+			dailyStats.NumTeamAResponse++
+		}
+		if labelContains(issue.Labels, "Team-B") {
+			dailyStats.NumTeamBResponse++
+		}
+
+		var duration time.Duration
+		if issue.State != nil && *issue.State == "closed" {
+			duration = issue.ClosedAt.Sub(*issue.CreatedAt)
+		} else {
+			duration = issue.UpdatedAt.Sub(*issue.CreatedAt)
+		}
+
+		var assigns []string
+		if issue.Assignees != nil {
+			for _, assign := range issue.Assignees {
+				assigns = append(assigns, "@"+*assign.Login)
+			}
+			// assign := strings.Join(, ",")
+		}
+
+		if issue.Title != nil && issue.URL != nil && issue.Comments != nil {
+			dailyStats.NotUpdatedIssues[i] = &NotUpdatedIssues{
+				Title:        *issue.Title,
+				URL:          *issue.URL,
+				Assign:       strings.Join(assigns, ","),
+				NumComments:  *issue.Comments,
+				OpenDuration: duration,
+			}
+		}
+	}
+	// fmt.Printf("%v", dailyStats)
+	return dailyStats, nil
+}
+
+// GenReport generate report
+func (s *dailyStats) GetDailyReportStats() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("=== サマリー ===\n"))
+	sb.WriteString(fmt.Sprintf("総未更新チケット数, %d\n", s.NumNotUpdatedIssues))
+	sb.WriteString(fmt.Sprintf("Team-A 未更新チケット数, %d\n", s.NumTeamAResponse))
+	sb.WriteString(fmt.Sprintf("Team-B 未更新チケット数, %d\n", s.NumTeamBResponse))
+	sb.WriteString(fmt.Sprintf("=== 詳細((チケットリンク/Openからの経過時間)) ===\n"))
+	for _, issue := range s.NotUpdatedIssues {
+		totalHours := int(issue.OpenDuration.Hours())
+		dates := totalHours / 24
+		hours := totalHours % 24
+		sb.WriteString(fmt.Sprintf("- <%s|%s> ", issue.URL, issue.Title))
+		sb.WriteString(fmt.Sprintf("%dd %dh ", dates, hours))
+		sb.WriteString(fmt.Sprintf("%s\n", issue.Assign))
+	}
+
+	return sb.String()
+}
+
 // GetUserSupportStats
 func (us *userSupport) GetUserSupportStats(since, until time.Time) (*Stats, error) {
-	upi, err := us.repo.GetUpdatedSupportIssues(since, until)
+	state := "open"
+	upi, err := us.repo.GetUpdatedSupportIssues(state, since, until)
 	if err != nil {
 		return nil, fmt.Errorf("get updated issues : %s", err)
 	}

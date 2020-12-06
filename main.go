@@ -9,6 +9,7 @@ import (
 
 	dus "github.com/sataga/go-github-sample/domain/usersupport"
 	igh "github.com/sataga/go-github-sample/infra/github"
+	"github.com/sataga/go-github-sample/infra/slack"
 	ius "github.com/sataga/go-github-sample/infra/usersupport"
 )
 
@@ -74,5 +75,31 @@ func main() {
 		}
 		fmt.Printf("UserSupportStats From: %s, Until: %s\n", since, until)
 		fmt.Printf("%s", usStats.GenReport())
+	case "daily-report":
+		until := now.Add(-168 * time.Hour)
+		usrepo := ius.NewUsersupportRepository(ghcli)
+		us := dus.NewUserSupport(usrepo)
+		dairyStats, err := us.GetDailyReportStats(until)
+		if err != nil {
+			log.Fatalf("get user support stats: %s", err)
+		}
+		fmt.Printf("dailyReportStats Until: %s\n", until)
+		fmt.Printf("%s", dairyStats.GetDailyReportStats())
+
+		channel := "times_t-sataga"
+		username := "t-sataga"
+		_, err = slack.PostMessage(channel, username, dairyStats.GetDailyReportStats())
+		if err != nil {
+			log.Fatalf("slack post message failed: %s", err)
+		}
+
+	case "slacktest":
+		channel := "times_t-sataga"
+		username := "t-sataga"
+		text := "hogehoge"
+		_, err := slack.PostMessage(channel, username, text)
+		if err != nil {
+			log.Fatalf("slack post message failed: %s", err)
+		}
 	}
 }
