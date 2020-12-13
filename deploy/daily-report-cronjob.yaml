@@ -1,0 +1,36 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: usersupport-daily-report
+spec:
+  schedule: "10 1 * * 1-5"
+  concurrencyPolicy: Allow
+  startingDeadlineSeconds: 30
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 3
+  suspend: false
+  jobTemplate:
+    spec:
+      completions: 1
+      parallelism: 1
+      backoffLimit: 1
+      template:
+        spec:
+          containers:
+            - name: usersupport-daily-report
+              image: sataga/usersupport-daily-report:latest
+              imagePullPolicy: Always
+              args:
+                - "daily-report"
+              env:
+              - name: GITHUB_TOKEN
+                valueFrom:
+                    secretKeyRef:
+                      key: github-token
+                      name: github-secret
+              - name: GITHUB_MAIL
+                valueFrom:
+                    secretKeyRef:
+                      key: github-mail
+                      name: github-secret
+          restartPolicy: Never
