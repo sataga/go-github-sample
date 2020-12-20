@@ -34,7 +34,21 @@ func (r *userSupportRepository) GetUpdatedSupportIssues(state string, since, unt
 	return iss, nil
 }
 
-func (r * userSupportRepository) GetCurrentOpenNotUpdatedSupportIssues(until time.Time) ([]*github.Issue , error){	
+func (r *userSupportRepository) GetClosedSupportIssues(since, until time.Time) ([]*github.Issue, error) {
+	issues, err := r.ghClient.ListRepoIssuesSince("sataga", "issue-warehouse", since, "closed", []string{"support"})
+	if err != nil {
+		return nil, fmt.Errorf("list repo issues: %s", err)
+	}
+	iss := make([]*github.Issue, 0, len(issues))
+	for _, is := range issues {
+		if is.UpdatedAt.Before(until) {
+			iss = append(iss, is)
+		}
+	}
+	return iss, nil
+}
+
+func (r *userSupportRepository) GetCurrentOpenNotUpdatedSupportIssues(until time.Time) ([]*github.Issue, error) {
 	issues, err := r.ghClient.ListRepoIssues("sataga", "issue-warehouse", "open", []string{"support"})
 	if err != nil {
 		return nil, fmt.Errorf("list repo issues: %s", err)

@@ -3,6 +3,7 @@ package usersupport
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,11 +14,14 @@ import (
 type UserSupport interface {
 	GetUserSupportStats(since, until time.Time) (*Stats, error)
 	GetDailyReportStats(until time.Time) (*dailyStats, error)
+	GetMonthlyReportStats(since, until time.Time) (map[string]*monthlyStats, error)
+	GenMonthlyReport(data map[string]*monthlyStats) string
 }
 
 // Repository r/w data which usersupport domain requires
 type Repository interface {
 	GetUpdatedSupportIssues(state string, since, until time.Time) ([]*github.Issue, error)
+	GetClosedSupportIssues(since, until time.Time) ([]*github.Issue, error)
 	GetCurrentOpenNotUpdatedSupportIssues(until time.Time) ([]*github.Issue, error)
 	GetCurrentOpenSupportIssues() ([]*github.Issue, error)
 	GetCurrentOpenAnyLabelsSupportIssues(state string, labels []string) ([]*github.Issue, error)
@@ -62,6 +66,20 @@ type NotUpdatedIssues struct {
 	Assign       string        `yaml:"not_updated_issues_of_assign"`
 	NumComments  int           `yaml:"not_updated_issues_of_num_comment"`
 	OpenDuration time.Duration `yaml:"not_updated_issues_of_open_duration"`
+}
+type monthlyStats struct {
+	NumCreatedIssues           int `yaml:"num_created_issues"`
+	NumClosedIssues            int `yaml:"num_closed_issues"`
+	NumGenreRequestIssues      int `yaml:"num_genre__issues"`
+	NumGenreLogSurveyIssues    int `yaml:"num_genre_log_survey_issues"`
+	NumGenreImpactSurveyIssues int `yaml:"num_genre_impact_survey_issues"`
+	NumGenreSpecSurveyIssues   int `yaml:"num_genre_spec_survey_issues"`
+	NumTeamAResolveIssues      int `yaml:"num_team_a_resolve_issues"`
+	NumScoreA                  int `yaml:"num_score_A"`
+	NumScoreB                  int `yaml:"num_score_B"`
+	NumScoreC                  int `yaml:"num_score_C"`
+	NumScoreD                  int `yaml:"num_score_D"`
+	NumScoreE                  int `yaml:"num_score_E"`
 }
 
 // NewUserSupport creates UserSupport
@@ -142,6 +160,111 @@ func (s *dailyStats) GetDailyReportStats() string {
 	}
 
 	return sb.String()
+}
+
+// GenReport generate report
+func (us *userSupport) GenMonthlyReport(data map[string]*monthlyStats) string {
+	var sb strings.Builder
+	var span []string
+	var NumCreatedIssues []string
+	var NumClosedIssues []string
+	var NumGenreRequestIssues []string
+	var NumGenreLogSurveyIssues []string
+	var NumGenreImpactSurveyIssues []string
+	var NumGenreSpecSurveyIssues []string
+	var NumTeamAResolveIssues []string
+	var NumScoreA []string
+	var NumScoreB []string
+	var NumScoreC []string
+	var NumScoreD []string
+	var NumScoreE []string
+
+	for i, d := range data {
+		span = append(span, i)
+		NumCreatedIssues = append(NumCreatedIssues, strconv.Itoa(d.NumCreatedIssues))
+		NumClosedIssues = append(NumClosedIssues, strconv.Itoa(d.NumClosedIssues))
+		NumGenreRequestIssues = append(NumGenreRequestIssues, strconv.Itoa(d.NumGenreRequestIssues))
+		NumGenreLogSurveyIssues = append(NumGenreLogSurveyIssues, strconv.Itoa(d.NumGenreLogSurveyIssues))
+		NumGenreImpactSurveyIssues = append(NumGenreImpactSurveyIssues, strconv.Itoa(d.NumGenreLogSurveyIssues))
+		NumGenreSpecSurveyIssues = append(NumGenreSpecSurveyIssues, strconv.Itoa(d.NumGenreSpecSurveyIssues))
+		NumTeamAResolveIssues = append(NumTeamAResolveIssues, strconv.Itoa(d.NumTeamAResolveIssues))
+		NumScoreA = append(NumScoreA, strconv.Itoa(d.NumScoreA))
+		NumScoreB = append(NumScoreB, strconv.Itoa(d.NumScoreB))
+		NumScoreC = append(NumScoreC, strconv.Itoa(d.NumScoreC))
+		NumScoreD = append(NumScoreD, strconv.Itoa(d.NumScoreD))
+		NumScoreE = append(NumScoreE, strconv.Itoa(d.NumScoreE))
+	}
+
+	sb.WriteString(fmt.Sprintf("項目,"))
+	sb.WriteString(fmt.Sprintf("%s\n", strings.Join(span, ",")))
+	sb.WriteString(fmt.Sprintf("起票件数,%s\n", strings.Join(NumCreatedIssues, ",")))
+	sb.WriteString(fmt.Sprintf("クローズ件数,%s\n", strings.Join(NumClosedIssues, ",")))
+	sb.WriteString(fmt.Sprintf("ジャンル:要望 件数,%s\n", strings.Join(NumGenreRequestIssues, ",")))
+	sb.WriteString(fmt.Sprintf("ジャンル:ログ調査 件数,%s\n", strings.Join(NumGenreLogSurveyIssues, ",")))
+	sb.WriteString(fmt.Sprintf("ジャンル:影響調査 件数,%s\n", strings.Join(NumGenreImpactSurveyIssues, ",")))
+	sb.WriteString(fmt.Sprintf("ジャンル:仕様調査 件数,%s\n", strings.Join(NumGenreSpecSurveyIssues, ",")))
+	sb.WriteString(fmt.Sprintf("Team-A完結数,%s\n", strings.Join(NumTeamAResolveIssues, ",")))
+	sb.WriteString(fmt.Sprintf("スコア A,%s\n", strings.Join(NumScoreA, ",")))
+	sb.WriteString(fmt.Sprintf("スコア B,%s\n", strings.Join(NumScoreB, ",")))
+	sb.WriteString(fmt.Sprintf("スコア C,%s\n", strings.Join(NumScoreC, ",")))
+	sb.WriteString(fmt.Sprintf("スコア D,%s\n", strings.Join(NumScoreD, ",")))
+	sb.WriteString(fmt.Sprintf("スコア E,%s\n", strings.Join(NumScoreE, ",")))
+	return sb.String()
+}
+
+// GetMonthlyReport
+func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (map[string]*monthlyStats, error) {
+	//
+	span := 4
+	results := make(map[string]*monthlyStats, span)
+	for i := 1; i <= span; i++ {
+		startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
+		cpi, err := us.repo.GetClosedSupportIssues(since, until)
+		if err != nil {
+			return nil, fmt.Errorf("get updated issues : %s", err)
+		}
+		results[startEnd] = &monthlyStats{}
+		for _, issue := range cpi {
+			if issue.State != nil && *issue.State == "closed" {
+				results[startEnd].NumClosedIssues++
+			}
+			if issue.CreatedAt != nil && issue.CreatedAt.After(since) && issue.CreatedAt.Before(until) {
+				results[startEnd].NumCreatedIssues++
+			}
+			if labelContains(issue.Labels, "genre:影響調査") {
+				results[startEnd].NumGenreImpactSurveyIssues++
+			}
+			if labelContains(issue.Labels, "genre:要望") {
+				results[startEnd].NumGenreRequestIssues++
+			}
+			if labelContains(issue.Labels, "genre:ログ調査") {
+				results[startEnd].NumGenreLogSurveyIssues++
+			}
+			if labelContains(issue.Labels, "genre:仕様調査") {
+				results[startEnd].NumGenreSpecSurveyIssues++
+			}
+			if labelContains(issue.Labels, "TeamA単体解決") {
+				results[startEnd].NumTeamAResolveIssues++
+			}
+			totalTime := int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours()) / 24
+			switch {
+			case totalTime <= 4:
+				results[startEnd].NumScoreA++
+			case totalTime <= 8:
+				results[startEnd].NumScoreB++
+			case totalTime <= 12:
+				results[startEnd].NumScoreC++
+			case totalTime <= 16:
+				results[startEnd].NumScoreD++
+			default:
+				results[startEnd].NumScoreE++
+			}
+		}
+		results[startEnd].NumClosedIssues = len(cpi)
+		since = since.AddDate(0, 0, -7)
+		until = until.AddDate(0, 0, -7)
+	}
+	return results, nil
 }
 
 // GetUserSupportStats
@@ -246,6 +369,8 @@ func (s *Stats) GenReport() string {
 			// 	break
 			// }
 			totalHours := int(kv.Val.Hours())
+			tmp := int(kv.Val.Minutes())
+			fmt.Println(tmp)
 			dates := totalHours / 24
 			hours := totalHours % 24
 			sb.WriteString(fmt.Sprintf("%s, %dd %dh\n", kv.Key, dates, hours))
