@@ -113,7 +113,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("get user support stats: %s", err)
 		}
-		fmt.Printf("%s", us.GenMonthlyReport(monthlyStats))
+		fmt.Printf("%s", monthlyStats.GenMonthlyReport())
 	case "slacktest":
 		channel := "times_t-sataga"
 		username := "t-sataga"

@@ -14,8 +14,8 @@ import (
 type UserSupport interface {
 	GetUserSupportStats(since, until time.Time) (*Stats, error)
 	GetDailyReportStats(until time.Time) (*dailyStats, error)
-	GetMonthlyReportStats(since, until time.Time) (map[string]*monthlyStats, error)
-	GenMonthlyReport(data map[string]*monthlyStats) string
+	GetMonthlyReportStats(since, until time.Time) (*monthlyStats, error)
+	// GenMonthlyReport(data map[string]*monthlyStats) string
 }
 
 // Repository r/w data which usersupport domain requires
@@ -68,6 +68,9 @@ type NotUpdatedIssues struct {
 	OpenDuration time.Duration `yaml:"not_updated_issues_of_open_duration"`
 }
 type monthlyStats struct {
+	summaryStats map[string]*summaryStats `yaml:"summary_stats"`
+}
+type summaryStats struct {
 	NumCreatedIssues           int `yaml:"num_created_issues"`
 	NumClosedIssues            int `yaml:"num_closed_issues"`
 	NumGenreRequestIssues      int `yaml:"num_genre__issues"`
@@ -163,7 +166,7 @@ func (s *dailyStats) GetDailyReportStats() string {
 }
 
 // GenReport generate report
-func (us *userSupport) GenMonthlyReport(data map[string]*monthlyStats) string {
+func (ms *monthlyStats) GenMonthlyReport() string {
 	var sb strings.Builder
 	var span []string
 	var NumCreatedIssues []string
@@ -179,7 +182,7 @@ func (us *userSupport) GenMonthlyReport(data map[string]*monthlyStats) string {
 	var NumScoreD []string
 	var NumScoreE []string
 
-	for i, d := range data {
+	for i, d := range ms.summaryStats {
 		span = append(span, i)
 		NumCreatedIssues = append(NumCreatedIssues, strconv.Itoa(d.NumCreatedIssues))
 		NumClosedIssues = append(NumClosedIssues, strconv.Itoa(d.NumClosedIssues))
@@ -213,58 +216,62 @@ func (us *userSupport) GenMonthlyReport(data map[string]*monthlyStats) string {
 }
 
 // GetMonthlyReport
-func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (map[string]*monthlyStats, error) {
+func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlyStats, error) {
 	//
 	span := 4
-	results := make(map[string]*monthlyStats, span)
+	// monthlyStats:= make(map[string]*monthlyStats, span)
+	// monthlyStats := make(map[string]*summaryStats, span)
+	monthlyStats := &monthlyStats{
+		summaryStats: make(map[string]*summaryStats, span),
+	}
 	for i := 1; i <= span; i++ {
 		startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
 		cpi, err := us.repo.GetClosedSupportIssues(since, until)
 		if err != nil {
 			return nil, fmt.Errorf("get updated issues : %s", err)
 		}
-		results[startEnd] = &monthlyStats{}
+		monthlyStats.summaryStats[startEnd] = &summaryStats{}
 		for _, issue := range cpi {
 			if issue.State != nil && *issue.State == "closed" {
-				results[startEnd].NumClosedIssues++
+				monthlyStats.summaryStats[startEnd].NumClosedIssues++
 			}
 			if issue.CreatedAt != nil && issue.CreatedAt.After(since) && issue.CreatedAt.Before(until) {
-				results[startEnd].NumCreatedIssues++
+				monthlyStats.summaryStats[startEnd].NumCreatedIssues++
 			}
 			if labelContains(issue.Labels, "genre:影響調査") {
-				results[startEnd].NumGenreImpactSurveyIssues++
+				monthlyStats.summaryStats[startEnd].NumGenreImpactSurveyIssues++
 			}
 			if labelContains(issue.Labels, "genre:要望") {
-				results[startEnd].NumGenreRequestIssues++
+				monthlyStats.summaryStats[startEnd].NumGenreRequestIssues++
 			}
 			if labelContains(issue.Labels, "genre:ログ調査") {
-				results[startEnd].NumGenreLogSurveyIssues++
+				monthlyStats.summaryStats[startEnd].NumGenreLogSurveyIssues++
 			}
 			if labelContains(issue.Labels, "genre:仕様調査") {
-				results[startEnd].NumGenreSpecSurveyIssues++
+				monthlyStats.summaryStats[startEnd].NumGenreSpecSurveyIssues++
 			}
 			if labelContains(issue.Labels, "TeamA単体解決") {
-				results[startEnd].NumTeamAResolveIssues++
+				monthlyStats.summaryStats[startEnd].NumTeamAResolveIssues++
 			}
 			totalTime := int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours()) / 24
 			switch {
 			case totalTime <= 4:
-				results[startEnd].NumScoreA++
+				monthlyStats.summaryStats[startEnd].NumScoreA++
 			case totalTime <= 8:
-				results[startEnd].NumScoreB++
+				monthlyStats.summaryStats[startEnd].NumScoreB++
 			case totalTime <= 12:
-				results[startEnd].NumScoreC++
+				monthlyStats.summaryStats[startEnd].NumScoreC++
 			case totalTime <= 16:
-				results[startEnd].NumScoreD++
+				monthlyStats.summaryStats[startEnd].NumScoreD++
 			default:
-				results[startEnd].NumScoreE++
+				monthlyStats.summaryStats[startEnd].NumScoreE++
 			}
 		}
-		results[startEnd].NumClosedIssues = len(cpi)
+		monthlyStats.summaryStats[startEnd].NumClosedIssues = len(cpi)
 		since = since.AddDate(0, 0, -7)
 		until = until.AddDate(0, 0, -7)
 	}
-	return results, nil
+	return monthlyStats, nil
 }
 
 // GetUserSupportStats
