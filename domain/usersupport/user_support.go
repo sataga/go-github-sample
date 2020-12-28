@@ -251,15 +251,15 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 	sb.WriteString(fmt.Sprintf("ジャンル:ログ調査 件数,%s\n", strings.Join(NumGenreLogSurveyIssues, ",")))
 	sb.WriteString(fmt.Sprintf("ジャンル:影響調査 件数,%s\n", strings.Join(NumGenreImpactSurveyIssues, ",")))
 	sb.WriteString(fmt.Sprintf("ジャンル:仕様調査 件数,%s\n", strings.Join(NumGenreSpecSurveyIssues, ",")))
-	sb.WriteString(fmt.Sprintf("スコア A,%s\n", strings.Join(NumScoreA, ",")))
-	sb.WriteString(fmt.Sprintf("スコア B,%s\n", strings.Join(NumScoreB, ",")))
-	sb.WriteString(fmt.Sprintf("スコア C,%s\n", strings.Join(NumScoreC, ",")))
-	sb.WriteString(fmt.Sprintf("スコア D,%s\n", strings.Join(NumScoreD, ",")))
-	sb.WriteString(fmt.Sprintf("スコア E,%s\n", strings.Join(NumScoreE, ",")))
+	sb.WriteString(fmt.Sprintf("スコアA,%s\n", strings.Join(NumScoreA, ",")))
+	sb.WriteString(fmt.Sprintf("スコアB,%s\n", strings.Join(NumScoreB, ",")))
+	sb.WriteString(fmt.Sprintf("スコアC,%s\n", strings.Join(NumScoreC, ",")))
+	sb.WriteString(fmt.Sprintf("スコアD,%s\n", strings.Join(NumScoreD, ",")))
+	sb.WriteString(fmt.Sprintf("スコアE,%s\n", strings.Join(NumScoreE, ",")))
 	sb.WriteString(fmt.Sprintf("\n"))
-	sb.WriteString(fmt.Sprintf("## 詳細 ※title/url,緊急度,ジャンル,コメント数,経過時間,単体解決フラグ\n"))
+	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
 	for _, d := range ms.detailStats {
-		sb.WriteString(fmt.Sprintf("- [%s](%s) - %s - %s - %d - %d - %t \n", d.Title, d.URL, d.Urgency, d.Genre, d.NumComments, d.OpenDuration, d.TeamAResolve))
+		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", d.Title, d.URL, d.Urgency, d.Genre, d.Assignee, d.NumComments, d.OpenDuration, d.TeamAResolve, d.TargetSpan))
 	}
 	return sb.String()
 }
