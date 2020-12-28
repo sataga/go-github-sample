@@ -72,20 +72,21 @@ type monthlyStats struct {
 	detailStats  map[int]*detailStats     `yaml:"detail_stats"`
 }
 type summaryStats struct {
-	NumCreatedIssues           int `yaml:"num_created_issues"`
-	NumClosedIssues            int `yaml:"num_closed_issues"`
-	NumGenreRequestIssues      int `yaml:"num_genre__issues"`
-	NumGenreLogSurveyIssues    int `yaml:"num_genre_log_survey_issues"`
-	NumGenreImpactSurveyIssues int `yaml:"num_genre_impact_survey_issues"`
-	NumGenreSpecSurveyIssues   int `yaml:"num_genre_spec_survey_issues"`
-	NumTeamAResolveIssues      int `yaml:"num_team_a_resolve_issues"`
-	NumUrgencyHighIssues       int `yaml:"num_urgency_high_issues"`
-	NumUrgencyLowIssues        int `yaml:"num_urgency_low_issues"`
-	NumScoreA                  int `yaml:"num_score_A"`
-	NumScoreB                  int `yaml:"num_score_B"`
-	NumScoreC                  int `yaml:"num_score_C"`
-	NumScoreD                  int `yaml:"num_score_D"`
-	NumScoreE                  int `yaml:"num_score_E"`
+	Span                       string `yajl:"span"`
+	NumCreatedIssues           int    `yaml:"num_created_issues"`
+	NumClosedIssues            int    `yaml:"num_closed_issues"`
+	NumGenreRequestIssues      int    `yaml:"num_genre__issues"`
+	NumGenreLogSurveyIssues    int    `yaml:"num_genre_log_survey_issues"`
+	NumGenreImpactSurveyIssues int    `yaml:"num_genre_impact_survey_issues"`
+	NumGenreSpecSurveyIssues   int    `yaml:"num_genre_spec_survey_issues"`
+	NumTeamAResolveIssues      int    `yaml:"num_team_a_resolve_issues"`
+	NumUrgencyHighIssues       int    `yaml:"num_urgency_high_issues"`
+	NumUrgencyLowIssues        int    `yaml:"num_urgency_low_issues"`
+	NumScoreA                  int    `yaml:"num_score_A"`
+	NumScoreB                  int    `yaml:"num_score_B"`
+	NumScoreC                  int    `yaml:"num_score_C"`
+	NumScoreD                  int    `yaml:"num_score_D"`
+	NumScoreE                  int    `yaml:"num_score_E"`
 }
 
 type detailStats struct {
@@ -186,7 +187,7 @@ func (s *dailyStats) GetDailyReportStats() string {
 // GenReport generate report
 func (ms *monthlyStats) GenMonthlyReport() string {
 	var sb strings.Builder
-	var span []string
+	var Span []string
 	var NumCreatedIssues []string
 	var NumClosedIssues []string
 	var NumGenreRequestIssues []string
@@ -194,37 +195,62 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 	var NumGenreImpactSurveyIssues []string
 	var NumGenreSpecSurveyIssues []string
 	var NumTeamAResolveIssues []string
+	var NumTeamAResolvePercentage []string
 	var NumScoreA []string
 	var NumScoreB []string
 	var NumScoreC []string
 	var NumScoreD []string
 	var NumScoreE []string
 
-	for i, d := range ms.summaryStats {
-		span = append(span, i)
-		NumCreatedIssues = append(NumCreatedIssues, strconv.Itoa(d.NumCreatedIssues))
-		NumClosedIssues = append(NumClosedIssues, strconv.Itoa(d.NumClosedIssues))
-		NumGenreRequestIssues = append(NumGenreRequestIssues, strconv.Itoa(d.NumGenreRequestIssues))
-		NumGenreLogSurveyIssues = append(NumGenreLogSurveyIssues, strconv.Itoa(d.NumGenreLogSurveyIssues))
-		NumGenreImpactSurveyIssues = append(NumGenreImpactSurveyIssues, strconv.Itoa(d.NumGenreLogSurveyIssues))
-		NumGenreSpecSurveyIssues = append(NumGenreSpecSurveyIssues, strconv.Itoa(d.NumGenreSpecSurveyIssues))
-		NumTeamAResolveIssues = append(NumTeamAResolveIssues, strconv.Itoa(d.NumTeamAResolveIssues))
-		NumScoreA = append(NumScoreA, strconv.Itoa(d.NumScoreA))
-		NumScoreB = append(NumScoreB, strconv.Itoa(d.NumScoreB))
-		NumScoreC = append(NumScoreC, strconv.Itoa(d.NumScoreC))
-		NumScoreD = append(NumScoreD, strconv.Itoa(d.NumScoreD))
-		NumScoreE = append(NumScoreE, strconv.Itoa(d.NumScoreE))
+	type kv struct {
+		Key string
+		Val *summaryStats
+	}
+	var kvArr []kv
+	for k, v := range ms.summaryStats {
+		kvArr = append(kvArr, kv{k, v})
+	}
+	// sort by Span
+	sort.Slice(kvArr, func(i, j int) bool {
+		return kvArr[i].Val.Span < kvArr[j].Val.Span
+	})
+
+	for _, d := range kvArr {
+		Span = append(Span, d.Val.Span)
+		NumCreatedIssues = append(NumCreatedIssues, strconv.Itoa(d.Val.NumCreatedIssues))
+		NumClosedIssues = append(NumClosedIssues, strconv.Itoa(d.Val.NumClosedIssues))
+		NumGenreRequestIssues = append(NumGenreRequestIssues, strconv.Itoa(d.Val.NumGenreRequestIssues))
+		NumGenreLogSurveyIssues = append(NumGenreLogSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
+		NumGenreImpactSurveyIssues = append(NumGenreImpactSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
+		NumGenreSpecSurveyIssues = append(NumGenreSpecSurveyIssues, strconv.Itoa(d.Val.NumGenreSpecSurveyIssues))
+		NumTeamAResolveIssues = append(NumTeamAResolveIssues, strconv.Itoa(d.Val.NumTeamAResolveIssues))
+		if d.Val.NumTeamAResolveIssues != 0 {
+			if d.Val.NumClosedIssues != 0 {
+				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, fmt.Sprintf("%.1f", (float64(d.Val.NumTeamAResolveIssues)/float64(d.Val.NumClosedIssues)*100)))
+			} else {
+				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
+			}
+		} else {
+			NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
+		}
+
+		NumScoreA = append(NumScoreA, strconv.Itoa(d.Val.NumScoreA))
+		NumScoreB = append(NumScoreB, strconv.Itoa(d.Val.NumScoreB))
+		NumScoreC = append(NumScoreC, strconv.Itoa(d.Val.NumScoreC))
+		NumScoreD = append(NumScoreD, strconv.Itoa(d.Val.NumScoreD))
+		NumScoreE = append(NumScoreE, strconv.Itoa(d.Val.NumScoreE))
 	}
 	sb.WriteString(fmt.Sprintf("## サマリー \n"))
 	sb.WriteString(fmt.Sprintf("項目,"))
-	sb.WriteString(fmt.Sprintf("%s\n", strings.Join(span, ",")))
+	sb.WriteString(fmt.Sprintf("%s\n", strings.Join(Span, ",")))
 	sb.WriteString(fmt.Sprintf("起票件数,%s\n", strings.Join(NumCreatedIssues, ",")))
+	sb.WriteString(fmt.Sprintf("Team-A完結数,%s\n", strings.Join(NumTeamAResolveIssues, ",")))
 	sb.WriteString(fmt.Sprintf("クローズ件数,%s\n", strings.Join(NumClosedIssues, ",")))
+	sb.WriteString(fmt.Sprintf("Team-A完結率,%s\n", strings.Join(NumTeamAResolvePercentage, ",")))
 	sb.WriteString(fmt.Sprintf("ジャンル:要望 件数,%s\n", strings.Join(NumGenreRequestIssues, ",")))
 	sb.WriteString(fmt.Sprintf("ジャンル:ログ調査 件数,%s\n", strings.Join(NumGenreLogSurveyIssues, ",")))
 	sb.WriteString(fmt.Sprintf("ジャンル:影響調査 件数,%s\n", strings.Join(NumGenreImpactSurveyIssues, ",")))
 	sb.WriteString(fmt.Sprintf("ジャンル:仕様調査 件数,%s\n", strings.Join(NumGenreSpecSurveyIssues, ",")))
-	sb.WriteString(fmt.Sprintf("Team-A完結数,%s\n", strings.Join(NumTeamAResolveIssues, ",")))
 	sb.WriteString(fmt.Sprintf("スコア A,%s\n", strings.Join(NumScoreA, ",")))
 	sb.WriteString(fmt.Sprintf("スコア B,%s\n", strings.Join(NumScoreB, ",")))
 	sb.WriteString(fmt.Sprintf("スコア C,%s\n", strings.Join(NumScoreC, ",")))
@@ -255,7 +281,9 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 		if err != nil {
 			return nil, fmt.Errorf("get updated issues : %s", err)
 		}
-		monthlyStats.summaryStats[startEnd] = &summaryStats{}
+		monthlyStats.summaryStats[startEnd] = &summaryStats{
+			Span: startEnd,
+		}
 		for _, issue := range cpi {
 			monthlyStats.detailStats[cnt] = &detailStats{}
 			if issue.State != nil && *issue.State == "closed" {
@@ -290,6 +318,7 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 			if labelContains(issue.Labels, "緊急度:低") {
 				monthlyStats.summaryStats[startEnd].NumUrgencyLowIssues++
 			}
+
 			totalTime := int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours()) / 24
 			switch {
 			case totalTime <= 4:
@@ -303,6 +332,7 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 			default:
 				monthlyStats.summaryStats[startEnd].NumScoreE++
 			}
+
 			monthlyStats.detailStats[cnt].Title = *issue.Title
 			monthlyStats.detailStats[cnt].URL = *issue.URL
 			monthlyStats.detailStats[cnt].NumComments = *issue.Comments
