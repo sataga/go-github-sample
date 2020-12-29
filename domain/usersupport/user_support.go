@@ -12,7 +12,6 @@ import (
 
 // UserSupport is interface for getting user support info
 type UserSupport interface {
-	GetUserSupportStats(since, until time.Time) (*Stats, error)
 	GetDailyReportStats(until time.Time) (*dailyStats, error)
 	GetMonthlyReportStats(since, until time.Time) (*monthlyStats, error)
 	// GenMonthlyReport(data map[string]*monthlyStats) string
