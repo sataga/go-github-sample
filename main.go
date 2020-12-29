@@ -92,7 +92,28 @@ func main() {
 		if err != nil {
 			log.Fatalf("slack post message failed: %s", err)
 		}
-
+	case "monthly-report":
+		if err := userSupportFlag.Parse(subCommandArgs[1:]); err != nil {
+			log.Fatalf("parsing user support flag: %s", err)
+		}
+		usrepo := ius.NewUsersupportRepository(ghcli)
+		us := dus.NewUserSupport(usrepo)
+		var since, until time.Time
+		var err error
+		if since, err = time.Parse("2006-01-02", *sinceStr); err != nil {
+			log.Fatalf("could not parse: %s", *sinceStr)
+		}
+		if until, err = time.Parse("2006-01-02", *untilStr); err != nil {
+			log.Fatalf("could not parse: %s", *untilStr)
+		}
+		// 終日までのIssueをカウントするための下処理
+		until = until.AddDate(0, 0, 1)
+		until = until.Add(-time.Minute)
+		monthlyStats, err := us.GetMonthlyReportStats(since, until)
+		if err != nil {
+			log.Fatalf("get user support stats: %s", err)
+		}
+		fmt.Printf("%s", monthlyStats.GenMonthlyReport())
 	case "slacktest":
 		channel := "times_t-sataga"
 		username := "t-sataga"
