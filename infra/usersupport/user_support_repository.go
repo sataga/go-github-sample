@@ -14,7 +14,7 @@ type userSupportRepository struct {
 }
 
 // NewUsersupportRepository creates UsersupportRepository implementation
-func NewUsersupportRepository(ghClient igh.Client) dus.Repository {
+func NewUserSupportRepository(ghClient igh.Client) dus.Repository {
 	return &userSupportRepository{
 		ghClient: ghClient,
 	}

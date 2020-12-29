@@ -54,7 +54,7 @@ func main() {
 	switch subCommand := subCommandArgs[0]; subCommand {
 	case "daily-report":
 		until := now.Add(-168 * time.Hour)
-		usrepo := ius.NewUsersupportRepository(ghcli)
+		usrepo := ius.NewUserSupportRepository(ghcli)
 		us := dus.NewUserSupport(usrepo)
 		dairyStats, err := us.GetDailyReportStats(until)
 		if err != nil {
@@ -73,7 +73,7 @@ func main() {
 		if err := userSupportFlag.Parse(subCommandArgs[1:]); err != nil {
 			log.Fatalf("parsing user support flag: %s", err)
 		}
-		usrepo := ius.NewUsersupportRepository(ghcli)
+		usrepo := ius.NewUserSupportRepository(ghcli)
 		us := dus.NewUserSupport(usrepo)
 		var since, until time.Time
 		var err error
