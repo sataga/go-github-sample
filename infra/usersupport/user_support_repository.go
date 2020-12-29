@@ -41,7 +41,7 @@ func (r *userSupportRepository) GetClosedSupportIssues(since, until time.Time) (
 	}
 	iss := make([]*github.Issue, 0, len(issues))
 	for _, is := range issues {
-		if is.UpdatedAt.Before(until) {
+		if is.ClosedAt.After(since) && is.ClosedAt.Before(until) {
 			iss = append(iss, is)
 		}
 	}
