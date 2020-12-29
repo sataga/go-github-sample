@@ -58,7 +58,7 @@ type summaryStats struct {
 	Span                       string `yajl:"span"`
 	NumCreatedIssues           int    `yaml:"num_created_issues"`
 	NumClosedIssues            int    `yaml:"num_closed_issues"`
-	NumGenreRequestIssues      int    `yaml:"num_genre__issues"`
+	NumGenreRequestIssues      int    `yaml:"num_genre_issues"`
 	NumGenreLogSurveyIssues    int    `yaml:"num_genre_log_survey_issues"`
 	NumGenreImpactSurveyIssues int    `yaml:"num_genre_impact_survey_issues"`
 	NumGenreSpecSurveyIssues   int    `yaml:"num_genre_spec_survey_issues"`
