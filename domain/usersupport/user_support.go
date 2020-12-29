@@ -454,50 +454,6 @@ func (us *userSupport) GetUserSupportStats(since, until time.Time) (*Stats, erro
 	return usStats, nil
 }
 
-// GenReport generate report
-func (s *Stats) GenReport() string {
-	var sb strings.Builder
-	sb.WriteString("項目, 情報\n")
-	sb.WriteString(fmt.Sprintf("Openチケット数, %d\n", s.NumOpenIssues))
-	sb.WriteString(fmt.Sprintf("新規作成されたチケット数, %d\n", s.NumCreatedIssues))
-	sb.WriteString(fmt.Sprintf("情報更新されたチケット数, %d\n", s.NumUpdatedIssues))
-	sb.WriteString(fmt.Sprintf("クローズしたチケット数, %d\n", s.NumClosedIssues))
-	sb.WriteString(fmt.Sprintf("緊急度:高 のチケット数, %d\n", s.UrgencyHighIssues))
-	sb.WriteString(fmt.Sprintf("かつ、難易度:高 のチケット数, %d\n", s.UrgencyHighDifficultyHighIssues))
-	sb.WriteString(fmt.Sprintf("かつ、難易度:低 のチケット数, %d\n", s.UrgencyHighDifficultyLowIssues))
-	sb.WriteString(fmt.Sprintf("緊急度:低 のチケット数, %d\n", s.UrgencyLowIssues))
-	sb.WriteString(fmt.Sprintf("かつ、難易度:高 のチケット数, %d\n", s.UrgencyLowDifficultyHighIssues))
-	sb.WriteString(fmt.Sprintf("かつ、難易度:低 のチケット数, %d\n", s.UrgencyLowDifficultyLowIssues))
-	{
-		// 経過時間を出すロジック
-		type kv struct {
-			Key string
-			Val time.Duration
-		}
-		var kvArr []kv
-		for k, v := range s.OpenDurationPerIssue {
-			kvArr = append(kvArr, kv{k, v})
-		}
-		// sort by duration
-		sort.Slice(kvArr, func(i, j int) bool {
-			return kvArr[i].Val > kvArr[j].Val
-		})
-		for _, kv := range kvArr {
-			// if >=10 {
-			// 	break
-			// }
-			totalHours := int(kv.Val.Hours())
-			tmp := int(kv.Val.Minutes())
-			fmt.Println(tmp)
-			dates := totalHours / 24
-			hours := totalHours % 24
-			sb.WriteString(fmt.Sprintf("%s, %dd %dh\n", kv.Key, dates, hours))
-		}
-	}
-
-	return sb.String()
-}
-
 //配列の中に特定の文字列が含まれるかを返す
 func labelContains(arr []github.Label, str string) bool {
 	for _, v := range arr {
