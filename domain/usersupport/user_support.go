@@ -149,7 +149,7 @@ func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error)
 	return dailyStats, nil
 }
 
-// GenReport generate report
+// GenReport generate daily report
 func (s *dailyStats) GetDailyReportStats() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("=== サマリー ===\n"))
@@ -164,98 +164,6 @@ func (s *dailyStats) GetDailyReportStats() string {
 		sb.WriteString(fmt.Sprintf("%dd%dh ", dates, hours))
 		sb.WriteString(fmt.Sprintf("%s/", issue.TeamName))
 		sb.WriteString(fmt.Sprintf("%s\n", issue.Assignee))
-	}
-	return sb.String()
-}
-
-// GenReport generate report
-func (ms *monthlyStats) GenMonthlyReport() string {
-	var sb strings.Builder
-	var Span []string
-	var NumCreatedIssues []string
-	var NumClosedIssues []string
-	var NumGenreRequestIssues []string
-	var NumGenreLogSurveyIssues []string
-	var NumGenreImpactSurveyIssues []string
-	var NumGenreSpecSurveyIssues []string
-	var NumGenreIncidentSurveyIssues []string
-	var NumTeamAResolveIssues []string
-	var NumTeamAResolvePercentage []string
-	var NumScoreA []string
-	var NumScoreB []string
-	var NumScoreC []string
-	var NumScoreD []string
-	var NumScoreE []string
-	var NumScoreF []string
-
-	type kv struct {
-		Key string
-		Val *summaryStats
-	}
-	var kvArr []kv
-	for k, v := range ms.summaryStats {
-		kvArr = append(kvArr, kv{k, v})
-	}
-	// sort by Span
-	sort.Slice(kvArr, func(i, j int) bool {
-		return kvArr[i].Val.Span < kvArr[j].Val.Span
-	})
-
-	for _, d := range kvArr {
-		Span = append(Span, d.Val.Span)
-		NumCreatedIssues = append(NumCreatedIssues, strconv.Itoa(d.Val.NumCreatedIssues))
-		NumClosedIssues = append(NumClosedIssues, strconv.Itoa(d.Val.NumClosedIssues))
-		NumGenreRequestIssues = append(NumGenreRequestIssues, strconv.Itoa(d.Val.NumGenreRequestIssues))
-		NumGenreLogSurveyIssues = append(NumGenreLogSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
-		NumGenreImpactSurveyIssues = append(NumGenreImpactSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
-		NumGenreSpecSurveyIssues = append(NumGenreSpecSurveyIssues, strconv.Itoa(d.Val.NumGenreSpecSurveyIssues))
-		NumGenreIncidentSurveyIssues = append(NumGenreIncidentSurveyIssues, strconv.Itoa(d.Val.NumGenreIncidentSurveyIssues))
-		NumTeamAResolveIssues = append(NumTeamAResolveIssues, strconv.Itoa(d.Val.NumTeamAResolveIssues))
-		if d.Val.NumTeamAResolveIssues != 0 {
-			if d.Val.NumClosedIssues != 0 {
-				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, fmt.Sprintf("%.1f", (float64(d.Val.NumTeamAResolveIssues)/float64(d.Val.NumClosedIssues)*100)))
-			} else {
-				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
-			}
-		} else {
-			NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
-		}
-
-		NumScoreA = append(NumScoreA, strconv.Itoa(d.Val.NumScoreA))
-		NumScoreB = append(NumScoreB, strconv.Itoa(d.Val.NumScoreB))
-		NumScoreC = append(NumScoreC, strconv.Itoa(d.Val.NumScoreC))
-		NumScoreD = append(NumScoreD, strconv.Itoa(d.Val.NumScoreD))
-		NumScoreE = append(NumScoreE, strconv.Itoa(d.Val.NumScoreE))
-		NumScoreF = append(NumScoreF, strconv.Itoa(d.Val.NumScoreF))
-	}
-	sb.WriteString(fmt.Sprintf("## サマリー \n"))
-	sb.WriteString(fmt.Sprintf("|項目|"))
-	sb.WriteString(fmt.Sprintf("%s|\n", strings.Join(Span, "|")))
-	sb.WriteString(fmt.Sprintf("|----|"))
-	for i := 0; i < len(kvArr); i++ {
-		sb.WriteString(fmt.Sprintf("----|"))
-	}
-	sb.WriteString(fmt.Sprintf("\n"))
-	sb.WriteString(fmt.Sprintf("|起票件数|%s|\n", strings.Join(NumCreatedIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|Team-A完結件数|%s|\n", strings.Join(NumTeamAResolveIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|クローズ件数|%s|\n", strings.Join(NumClosedIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|Team-A完結率(％)|%s|\n", strings.Join(NumTeamAResolvePercentage, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:要望件数|%s|\n", strings.Join(NumGenreRequestIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:ログ調査件数|%s|\n", strings.Join(NumGenreLogSurveyIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:影響調査件数|%s|\n", strings.Join(NumGenreImpactSurveyIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:仕様調査件数|%s|\n", strings.Join(NumGenreSpecSurveyIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:障害調査件数|%s|\n", strings.Join(NumGenreIncidentSurveyIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアA|%s|\n", strings.Join(NumScoreA, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアB|%s|\n", strings.Join(NumScoreB, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアC|%s|\n", strings.Join(NumScoreC, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアD|%s|\n", strings.Join(NumScoreD, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアE|%s|\n", strings.Join(NumScoreE, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアF|%s|\n", strings.Join(NumScoreF, "|")))
-	sb.WriteString(fmt.Sprintf("\n"))
-
-	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
-	for _, d := range ms.detailStats {
-		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", d.Title, d.HTMLURL, d.Urgency, d.Genre, d.Assignee, d.NumComments, d.OpenDuration, d.TeamAResolve, d.TargetSpan))
 	}
 	return sb.String()
 }
@@ -389,6 +297,98 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 
 	}
 	return monthlyStats, nil
+}
+
+// GenReport generate monthly report
+func (ms *monthlyStats) GenMonthlyReport() string {
+	var sb strings.Builder
+	var Span []string
+	var NumCreatedIssues []string
+	var NumClosedIssues []string
+	var NumGenreRequestIssues []string
+	var NumGenreLogSurveyIssues []string
+	var NumGenreImpactSurveyIssues []string
+	var NumGenreSpecSurveyIssues []string
+	var NumGenreIncidentSurveyIssues []string
+	var NumTeamAResolveIssues []string
+	var NumTeamAResolvePercentage []string
+	var NumScoreA []string
+	var NumScoreB []string
+	var NumScoreC []string
+	var NumScoreD []string
+	var NumScoreE []string
+	var NumScoreF []string
+
+	type kv struct {
+		Key string
+		Val *summaryStats
+	}
+	var kvArr []kv
+	for k, v := range ms.summaryStats {
+		kvArr = append(kvArr, kv{k, v})
+	}
+	// sort by Span
+	sort.Slice(kvArr, func(i, j int) bool {
+		return kvArr[i].Val.Span < kvArr[j].Val.Span
+	})
+
+	for _, d := range kvArr {
+		Span = append(Span, d.Val.Span)
+		NumCreatedIssues = append(NumCreatedIssues, strconv.Itoa(d.Val.NumCreatedIssues))
+		NumClosedIssues = append(NumClosedIssues, strconv.Itoa(d.Val.NumClosedIssues))
+		NumGenreRequestIssues = append(NumGenreRequestIssues, strconv.Itoa(d.Val.NumGenreRequestIssues))
+		NumGenreLogSurveyIssues = append(NumGenreLogSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
+		NumGenreImpactSurveyIssues = append(NumGenreImpactSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
+		NumGenreSpecSurveyIssues = append(NumGenreSpecSurveyIssues, strconv.Itoa(d.Val.NumGenreSpecSurveyIssues))
+		NumGenreIncidentSurveyIssues = append(NumGenreIncidentSurveyIssues, strconv.Itoa(d.Val.NumGenreIncidentSurveyIssues))
+		NumTeamAResolveIssues = append(NumTeamAResolveIssues, strconv.Itoa(d.Val.NumTeamAResolveIssues))
+		if d.Val.NumTeamAResolveIssues != 0 {
+			if d.Val.NumClosedIssues != 0 {
+				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, fmt.Sprintf("%.1f", (float64(d.Val.NumTeamAResolveIssues)/float64(d.Val.NumClosedIssues)*100)))
+			} else {
+				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
+			}
+		} else {
+			NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
+		}
+
+		NumScoreA = append(NumScoreA, strconv.Itoa(d.Val.NumScoreA))
+		NumScoreB = append(NumScoreB, strconv.Itoa(d.Val.NumScoreB))
+		NumScoreC = append(NumScoreC, strconv.Itoa(d.Val.NumScoreC))
+		NumScoreD = append(NumScoreD, strconv.Itoa(d.Val.NumScoreD))
+		NumScoreE = append(NumScoreE, strconv.Itoa(d.Val.NumScoreE))
+		NumScoreF = append(NumScoreF, strconv.Itoa(d.Val.NumScoreF))
+	}
+	sb.WriteString(fmt.Sprintf("## サマリー \n"))
+	sb.WriteString(fmt.Sprintf("|項目|"))
+	sb.WriteString(fmt.Sprintf("%s|\n", strings.Join(Span, "|")))
+	sb.WriteString(fmt.Sprintf("|----|"))
+	for i := 0; i < len(kvArr); i++ {
+		sb.WriteString(fmt.Sprintf("----|"))
+	}
+	sb.WriteString(fmt.Sprintf("\n"))
+	sb.WriteString(fmt.Sprintf("|起票件数|%s|\n", strings.Join(NumCreatedIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|Team-A完結件数|%s|\n", strings.Join(NumTeamAResolveIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|クローズ件数|%s|\n", strings.Join(NumClosedIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|Team-A完結率(％)|%s|\n", strings.Join(NumTeamAResolvePercentage, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:要望件数|%s|\n", strings.Join(NumGenreRequestIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:ログ調査件数|%s|\n", strings.Join(NumGenreLogSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:影響調査件数|%s|\n", strings.Join(NumGenreImpactSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:仕様調査件数|%s|\n", strings.Join(NumGenreSpecSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:障害調査件数|%s|\n", strings.Join(NumGenreIncidentSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアA|%s|\n", strings.Join(NumScoreA, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアB|%s|\n", strings.Join(NumScoreB, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアC|%s|\n", strings.Join(NumScoreC, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアD|%s|\n", strings.Join(NumScoreD, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアE|%s|\n", strings.Join(NumScoreE, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアF|%s|\n", strings.Join(NumScoreF, "|")))
+	sb.WriteString(fmt.Sprintf("\n"))
+
+	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
+	for _, d := range ms.detailStats {
+		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", d.Title, d.HTMLURL, d.Urgency, d.Genre, d.Assignee, d.NumComments, d.OpenDuration, d.TeamAResolve, d.TargetSpan))
+	}
+	return sb.String()
 }
 
 //配列の中に特定の文字列が含まれるかを返す
