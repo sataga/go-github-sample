@@ -10,6 +10,10 @@ import (
 	"github.com/google/go-github/github"
 )
 
+var (
+	jp = time.FixedZone("Asia/Tokyo", 9*60*60)
+)
+
 // UserSupport is interface for getting user support info
 type UserSupport interface {
 	GetDailyReportStats(until time.Time) (*dailyStats, error)
@@ -76,7 +80,7 @@ type summaryStats struct {
 
 type detailStats struct {
 	Title        string `yaml:"detail_stats_of_title"`
-	URL          string `yaml:"detail_stats_of_issue_url"`
+	HTMLURL      string `yaml:"detail_stats_of_issue_url"`
 	CreatedAt    string `yaml:"detail_stats_of_created_at"`
 	ClosedAt     string `yaml:"detail_stats_of_closed_at"`
 	TargetSpan   string `yaml:"detail_stats_of_target_span"`
@@ -237,14 +241,15 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 		sb.WriteString(fmt.Sprintf("----|"))
 	}
 	sb.WriteString(fmt.Sprintf("\n"))
-	sb.WriteString(fmt.Sprintf("|起票(件数)|%s|\n", strings.Join(NumCreatedIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|Team-A完結(件数)|%s|\n", strings.Join(NumTeamAResolveIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|クローズ(件数)|%s|\n", strings.Join(NumClosedIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|起票件数|%s|\n", strings.Join(NumCreatedIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|Team-A完結件数|%s|\n", strings.Join(NumTeamAResolveIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|クローズ件数|%s|\n", strings.Join(NumClosedIssues, "|")))
 	sb.WriteString(fmt.Sprintf("|Team-A完結率(％)|%s|\n", strings.Join(NumTeamAResolvePercentage, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:要望(件数)|%s|\n", strings.Join(NumGenreRequestIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:ログ調査(件数)|%s|\n", strings.Join(NumGenreLogSurveyIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:影響調査(件数)|%s|\n", strings.Join(NumGenreImpactSurveyIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:仕様調査(件数)|%s|\n", strings.Join(NumGenreSpecSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:要望件数|%s|\n", strings.Join(NumGenreRequestIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:ログ調査件数|%s|\n", strings.Join(NumGenreLogSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:影響調査件数|%s|\n", strings.Join(NumGenreImpactSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:仕様調査件数|%s|\n", strings.Join(NumGenreSpecSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:障害調査件数|%s|\n", strings.Join(NumGenreIncidentSurveyIssues, "|")))
 	sb.WriteString(fmt.Sprintf("|スコアA|%s|\n", strings.Join(NumScoreA, "|")))
 	sb.WriteString(fmt.Sprintf("|スコアB|%s|\n", strings.Join(NumScoreB, "|")))
 	sb.WriteString(fmt.Sprintf("|スコアC|%s|\n", strings.Join(NumScoreC, "|")))
@@ -255,7 +260,7 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 
 	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
 	for _, d := range ms.detailStats {
-		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", d.Title, d.URL, d.Urgency, d.Genre, d.Assignee, d.NumComments, d.OpenDuration, d.TeamAResolve, d.TargetSpan))
+		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", d.Title, d.HTMLURL, d.Urgency, d.Genre, d.Assignee, d.NumComments, d.OpenDuration, d.TeamAResolve, d.TargetSpan))
 	}
 	return sb.String()
 }
@@ -336,10 +341,10 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 			}
 
 			monthlyStats.detailStats[cnt].Title = *issue.Title
-			monthlyStats.detailStats[cnt].URL = *issue.HTMLURL
+			monthlyStats.detailStats[cnt].HTMLURL = *issue.HTMLURL
 			monthlyStats.detailStats[cnt].NumComments = *issue.Comments
-			monthlyStats.detailStats[cnt].CreatedAt = issue.CreatedAt.Format("2006-01-02")
-			monthlyStats.detailStats[cnt].ClosedAt = issue.ClosedAt.Format("2006-01-02")
+			monthlyStats.detailStats[cnt].CreatedAt = issue.CreatedAt.In(jp).Format("2006-01-02")
+			monthlyStats.detailStats[cnt].ClosedAt = issue.ClosedAt.In(jp).Format("2006-01-02")
 			monthlyStats.detailStats[cnt].TargetSpan = startEnd
 
 			var assigns []string
