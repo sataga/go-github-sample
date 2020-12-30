@@ -14,14 +14,14 @@ type userSupportRepository struct {
 }
 
 // NewUsersupportRepository creates UsersupportRepository implementation
-func NewUsersupportRepository(ghClient igh.Client) dus.Repository {
+func NewUserSupportRepository(ghClient igh.Client) dus.Repository {
 	return &userSupportRepository{
 		ghClient: ghClient,
 	}
 }
 
-func (r *userSupportRepository) GetUpdatedSupportIssues(state string, since, until time.Time) ([]*github.Issue, error) {
-	issues, err := r.ghClient.ListRepoIssuesSince("sataga", "issue-warehouse", since, state, []string{"support"})
+func (r *userSupportRepository) GetUpdatedSupportIssues(since, until time.Time) ([]*github.Issue, error) {
+	issues, err := r.ghClient.ListRepoIssuesSince("sataga", "issue-warehouse", since, "all", []string{"support"})
 	if err != nil {
 		return nil, fmt.Errorf("list repo issues: %s", err)
 	}
@@ -41,7 +41,7 @@ func (r *userSupportRepository) GetClosedSupportIssues(since, until time.Time) (
 	}
 	iss := make([]*github.Issue, 0, len(issues))
 	for _, is := range issues {
-		if is.UpdatedAt.Before(until) {
+		if is.ClosedAt.After(since) && is.ClosedAt.Before(until) {
 			iss = append(iss, is)
 		}
 	}

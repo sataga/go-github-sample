@@ -10,9 +10,12 @@ import (
 	"github.com/google/go-github/github"
 )
 
+var (
+	jp = time.FixedZone("Asia/Tokyo", 9*60*60)
+)
+
 // UserSupport is interface for getting user support info
 type UserSupport interface {
-	GetUserSupportStats(since, until time.Time) (*Stats, error)
 	GetDailyReportStats(until time.Time) (*dailyStats, error)
 	GetMonthlyReportStats(since, until time.Time) (*monthlyStats, error)
 	// GenMonthlyReport(data map[string]*monthlyStats) string
@@ -20,7 +23,7 @@ type UserSupport interface {
 
 // Repository r/w data which usersupport domain requires
 type Repository interface {
-	GetUpdatedSupportIssues(state string, since, until time.Time) ([]*github.Issue, error)
+	GetUpdatedSupportIssues(since, until time.Time) ([]*github.Issue, error)
 	GetClosedSupportIssues(since, until time.Time) ([]*github.Issue, error)
 	GetCurrentOpenNotUpdatedSupportIssues(until time.Time) ([]*github.Issue, error)
 	GetCurrentOpenSupportIssues() ([]*github.Issue, error)
@@ -33,68 +36,46 @@ type userSupport struct {
 	repo Repository
 }
 
-// Stats is stats data from GitHub
-type Stats struct {
-	NumCreatedIssues                int                      `yaml:"num_created_issues"`
-	NumClosedIssues                 int                      `yaml:"num_closed_issues"`
-	UrgencyHighIssues               int                      `yaml:"num_urgency_high_issues"`
-	UrgencyLowIssues                int                      `yaml:"num_urgency_low_issues"`
-	UrgencyHighDifficultyHighIssues int                      `yaml:"num_urgency_high_difficulty_high_issues"`
-	UrgencyHighDifficultyLowIssues  int                      `yaml:"num_urgency_high_difficulty_low_issues"`
-	UrgencyLowDifficultyHighIssues  int                      `yaml:"num_urgency_low_difficulty_high_issues"`
-	UrgencyLowDifficultyLowIssues   int                      `yaml:"num_urgency_low_difficulty_low_issues"`
-	NumOpenIssues                   int                      `yaml:"num_open_issues"`
-	NumUpdatedIssues                int                      `yaml:"num_updated_issues"`
-	NumCommentsPerIssue             map[string]int           `yaml:"num_comments_per_issue"`
-	OpenDurationPerIssue            map[string]time.Duration `yaml:"open_duration_per_issue"`
-}
-
 // dailyStats is stats open data from GitHub
 type dailyStats struct {
-	NumNotUpdatedIssues int                       `yaml:"num_not_updated_issues"`
-	NumTeamAResponse    int                       `yaml:"num_team_a_response"`
-	NumTeamBResponse    int                       `yaml:"num_team_b_response"`
-	UrgencyHighIssues   int                       `yaml:"num_urgency_high_issues"`
-	UrgencyLowIssues    int                       `yaml:"num_urgency_low_issues"`
-	NotUpdatedIssues    map[int]*NotUpdatedIssues `yaml:"not_updated_issues"`
-}
-
-// NotUpdatedIssues is dailyStats of datail
-type NotUpdatedIssues struct {
-	Title        string        `yaml:"not_updated_issues_of_title"`
-	URL          string        `yaml:"not_updated_issues_of_issue_url"`
-	Assign       string        `yaml:"not_updated_issues_of_assign"`
-	NumComments  int           `yaml:"not_updated_issues_of_num_comment"`
-	OpenDuration time.Duration `yaml:"not_updated_issues_of_open_duration"`
+	NumNotUpdatedIssues int                  `yaml:"num_not_updated_issues"`
+	NumTeamAResponse    int                  `yaml:"num_team_a_response"`
+	NumTeamBResponse    int                  `yaml:"num_team_b_response"`
+	UrgencyHighIssues   int                  `yaml:"num_urgency_high_issues"`
+	UrgencyLowIssues    int                  `yaml:"num_urgency_low_issues"`
+	detailStats         map[int]*detailStats `yaml:"detail_stats"`
 }
 type monthlyStats struct {
 	summaryStats map[string]*summaryStats `yaml:"summary_stats"`
 	detailStats  map[int]*detailStats     `yaml:"detail_stats"`
 }
 type summaryStats struct {
-	Span                       string `yajl:"span"`
-	NumCreatedIssues           int    `yaml:"num_created_issues"`
-	NumClosedIssues            int    `yaml:"num_closed_issues"`
-	NumGenreRequestIssues      int    `yaml:"num_genre__issues"`
-	NumGenreLogSurveyIssues    int    `yaml:"num_genre_log_survey_issues"`
-	NumGenreImpactSurveyIssues int    `yaml:"num_genre_impact_survey_issues"`
-	NumGenreSpecSurveyIssues   int    `yaml:"num_genre_spec_survey_issues"`
-	NumTeamAResolveIssues      int    `yaml:"num_team_a_resolve_issues"`
-	NumUrgencyHighIssues       int    `yaml:"num_urgency_high_issues"`
-	NumUrgencyLowIssues        int    `yaml:"num_urgency_low_issues"`
-	NumScoreA                  int    `yaml:"num_score_A"`
-	NumScoreB                  int    `yaml:"num_score_B"`
-	NumScoreC                  int    `yaml:"num_score_C"`
-	NumScoreD                  int    `yaml:"num_score_D"`
-	NumScoreE                  int    `yaml:"num_score_E"`
+	Span                         string `yajl:"span"`
+	NumCreatedIssues             int    `yaml:"num_created_issues"`
+	NumClosedIssues              int    `yaml:"num_closed_issues"`
+	NumGenreRequestIssues        int    `yaml:"num_genre_issues"`
+	NumGenreLogSurveyIssues      int    `yaml:"num_genre_log_survey_issues"`
+	NumGenreImpactSurveyIssues   int    `yaml:"num_genre_impact_survey_issues"`
+	NumGenreSpecSurveyIssues     int    `yaml:"num_genre_spec_survey_issues"`
+	NumGenreIncidentSurveyIssues int    `yaml:"num_genre_incident_survey_issues"`
+	NumTeamAResolveIssues        int    `yaml:"num_team_a_resolve_issues"`
+	NumUrgencyHighIssues         int    `yaml:"num_urgency_high_issues"`
+	NumUrgencyLowIssues          int    `yaml:"num_urgency_low_issues"`
+	NumScoreA                    int    `yaml:"num_score_A"`
+	NumScoreB                    int    `yaml:"num_score_B"`
+	NumScoreC                    int    `yaml:"num_score_C"`
+	NumScoreD                    int    `yaml:"num_score_D"`
+	NumScoreE                    int    `yaml:"num_score_E"`
+	NumScoreF                    int    `yaml:"num_score_F"`
 }
 
 type detailStats struct {
 	Title        string `yaml:"detail_stats_of_title"`
-	URL          string `yaml:"detail_stats_of_issue_url"`
+	HTMLURL      string `yaml:"detail_stats_of_issue_url"`
 	CreatedAt    string `yaml:"detail_stats_of_created_at"`
 	ClosedAt     string `yaml:"detail_stats_of_closed_at"`
 	TargetSpan   string `yaml:"detail_stats_of_target_span"`
+	TeamName     string `yaml:"detail_stats_of_team_name"`
 	Urgency      string `yaml:"detail_stats_of_urgency"`
 	TeamAResolve bool   `yaml:"detail_stats_of_team_a_resolve"`
 	Genre        string `yaml:"detail_stats_of_genre"`
@@ -119,27 +100,36 @@ func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error)
 	}
 	dailyStats := &dailyStats{
 		NumNotUpdatedIssues: len(opi),
-		NotUpdatedIssues:    make(map[int]*NotUpdatedIssues, len(opi)),
+		detailStats:         make(map[int]*detailStats, len(opi)),
 	}
 	for i, issue := range opi {
-		if labelContains(issue.Labels, "緊急度:高") || labelContains(issue.Labels, "緊急度:中") {
+		dailyStats.detailStats[i] = &detailStats{}
+		if labelContains(issue.Labels, "緊急度:高") {
 			dailyStats.UrgencyHighIssues++
+			dailyStats.detailStats[i].Urgency = "高"
+		}
+		if labelContains(issue.Labels, "緊急度:中") {
+			dailyStats.UrgencyHighIssues++
+			dailyStats.detailStats[i].Urgency = "中"
 		}
 		if labelContains(issue.Labels, "緊急度:低") {
 			dailyStats.UrgencyLowIssues++
+			dailyStats.detailStats[i].Urgency = "低"
 		}
 		if labelContains(issue.Labels, "Team-A") {
 			dailyStats.NumTeamAResponse++
+			dailyStats.detailStats[i].TeamName = "Team-A"
 		}
 		if labelContains(issue.Labels, "Team-B") {
 			dailyStats.NumTeamBResponse++
+			dailyStats.detailStats[i].TeamName = "Team-B"
 		}
 
-		var duration time.Duration
+		var totalTime int
 		if issue.State != nil && *issue.State == "closed" {
-			duration = issue.ClosedAt.Sub(*issue.CreatedAt)
+			totalTime = int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours())
 		} else {
-			duration = issue.UpdatedAt.Sub(*issue.CreatedAt)
+			totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
 		}
 
 		var assigns []string
@@ -147,24 +137,19 @@ func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error)
 			for _, assign := range issue.Assignees {
 				assigns = append(assigns, "@"+*assign.Login)
 			}
-			// assign := strings.Join(, ",")
 		}
 
-		if issue.Title != nil && issue.URL != nil && issue.Comments != nil {
-			dailyStats.NotUpdatedIssues[i] = &NotUpdatedIssues{
-				Title:        *issue.Title,
-				URL:          *issue.URL,
-				Assign:       strings.Join(assigns, ","),
-				NumComments:  *issue.Comments,
-				OpenDuration: duration,
-			}
-		}
+		dailyStats.detailStats[i].Title = *issue.Title
+		dailyStats.detailStats[i].HTMLURL = *issue.HTMLURL
+		dailyStats.detailStats[i].Assignee = strings.Join(assigns, ",")
+		dailyStats.detailStats[i].NumComments = *issue.Comments
+		dailyStats.detailStats[i].CreatedAt = issue.CreatedAt.In(jp).Format("2006-01-02")
+		dailyStats.detailStats[i].OpenDuration = totalTime
 	}
-	// fmt.Printf("%v", dailyStats)
 	return dailyStats, nil
 }
 
-// GenReport generate report
+// GenReport generate daily report
 func (s *dailyStats) GetDailyReportStats() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("=== サマリー ===\n"))
@@ -172,100 +157,13 @@ func (s *dailyStats) GetDailyReportStats() string {
 	sb.WriteString(fmt.Sprintf("Team-A 未更新チケット数, %d\n", s.NumTeamAResponse))
 	sb.WriteString(fmt.Sprintf("Team-B 未更新チケット数, %d\n", s.NumTeamBResponse))
 	sb.WriteString(fmt.Sprintf("=== 詳細((チケットリンク/Openからの経過時間)) ===\n"))
-	for _, issue := range s.NotUpdatedIssues {
-		totalHours := int(issue.OpenDuration.Hours())
-		dates := totalHours / 24
-		hours := totalHours % 24
-		sb.WriteString(fmt.Sprintf("- <%s|%s> ", issue.URL, issue.Title))
-		sb.WriteString(fmt.Sprintf("%dd %dh ", dates, hours))
-		sb.WriteString(fmt.Sprintf("%s\n", issue.Assign))
-	}
-
-	return sb.String()
-}
-
-// GenReport generate report
-func (ms *monthlyStats) GenMonthlyReport() string {
-	var sb strings.Builder
-	var Span []string
-	var NumCreatedIssues []string
-	var NumClosedIssues []string
-	var NumGenreRequestIssues []string
-	var NumGenreLogSurveyIssues []string
-	var NumGenreImpactSurveyIssues []string
-	var NumGenreSpecSurveyIssues []string
-	var NumTeamAResolveIssues []string
-	var NumTeamAResolvePercentage []string
-	var NumScoreA []string
-	var NumScoreB []string
-	var NumScoreC []string
-	var NumScoreD []string
-	var NumScoreE []string
-
-	type kv struct {
-		Key string
-		Val *summaryStats
-	}
-	var kvArr []kv
-	for k, v := range ms.summaryStats {
-		kvArr = append(kvArr, kv{k, v})
-	}
-	// sort by Span
-	sort.Slice(kvArr, func(i, j int) bool {
-		return kvArr[i].Val.Span < kvArr[j].Val.Span
-	})
-
-	for _, d := range kvArr {
-		Span = append(Span, d.Val.Span)
-		NumCreatedIssues = append(NumCreatedIssues, strconv.Itoa(d.Val.NumCreatedIssues))
-		NumClosedIssues = append(NumClosedIssues, strconv.Itoa(d.Val.NumClosedIssues))
-		NumGenreRequestIssues = append(NumGenreRequestIssues, strconv.Itoa(d.Val.NumGenreRequestIssues))
-		NumGenreLogSurveyIssues = append(NumGenreLogSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
-		NumGenreImpactSurveyIssues = append(NumGenreImpactSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
-		NumGenreSpecSurveyIssues = append(NumGenreSpecSurveyIssues, strconv.Itoa(d.Val.NumGenreSpecSurveyIssues))
-		NumTeamAResolveIssues = append(NumTeamAResolveIssues, strconv.Itoa(d.Val.NumTeamAResolveIssues))
-		if d.Val.NumTeamAResolveIssues != 0 {
-			if d.Val.NumClosedIssues != 0 {
-				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, fmt.Sprintf("%.1f", (float64(d.Val.NumTeamAResolveIssues)/float64(d.Val.NumClosedIssues)*100)))
-			} else {
-				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
-			}
-		} else {
-			NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
-		}
-
-		NumScoreA = append(NumScoreA, strconv.Itoa(d.Val.NumScoreA))
-		NumScoreB = append(NumScoreB, strconv.Itoa(d.Val.NumScoreB))
-		NumScoreC = append(NumScoreC, strconv.Itoa(d.Val.NumScoreC))
-		NumScoreD = append(NumScoreD, strconv.Itoa(d.Val.NumScoreD))
-		NumScoreE = append(NumScoreE, strconv.Itoa(d.Val.NumScoreE))
-	}
-	sb.WriteString(fmt.Sprintf("## サマリー \n"))
-	sb.WriteString(fmt.Sprintf("|項目|"))
-	sb.WriteString(fmt.Sprintf("%s|\n", strings.Join(Span, "|")))
-	sb.WriteString(fmt.Sprintf("|----|"))
-	for i := 0; i < len(kvArr); i++ {
-		sb.WriteString(fmt.Sprintf("----|"))
-	}
-	sb.WriteString(fmt.Sprintf("\n"))
-	sb.WriteString(fmt.Sprintf("|起票(件数)|%s|\n", strings.Join(NumCreatedIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|Team-A完結(件数)|%s|\n", strings.Join(NumTeamAResolveIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|クローズ(件数)|%s|\n", strings.Join(NumClosedIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|Team-A完結率(％)|%s|\n", strings.Join(NumTeamAResolvePercentage, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:要望(件数)|%s|\n", strings.Join(NumGenreRequestIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:ログ調査(件数)|%s|\n", strings.Join(NumGenreLogSurveyIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:影響調査(件数)|%s|\n", strings.Join(NumGenreImpactSurveyIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|ジャンル:仕様調査(件数)|%s|\n", strings.Join(NumGenreSpecSurveyIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアA|%s|\n", strings.Join(NumScoreA, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアB|%s|\n", strings.Join(NumScoreB, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアC|%s|\n", strings.Join(NumScoreC, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアD|%s|\n", strings.Join(NumScoreD, "|")))
-	sb.WriteString(fmt.Sprintf("|スコアE|%s|\n", strings.Join(NumScoreE, "|")))
-	sb.WriteString(fmt.Sprintf("\n"))
-
-	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
-	for _, d := range ms.detailStats {
-		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", d.Title, d.URL, d.Urgency, d.Genre, d.Assignee, d.NumComments, d.OpenDuration, d.TeamAResolve, d.TargetSpan))
+	for _, issue := range s.detailStats {
+		dates := issue.OpenDuration / 24
+		hours := issue.OpenDuration % 24
+		sb.WriteString(fmt.Sprintf("- <%s|%s> ", issue.HTMLURL, issue.Title))
+		sb.WriteString(fmt.Sprintf("%dd%dh ", dates, hours))
+		sb.WriteString(fmt.Sprintf("%s/", issue.TeamName))
+		sb.WriteString(fmt.Sprintf("%s\n", issue.Assignee))
 	}
 	return sb.String()
 }
@@ -283,21 +181,31 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 	cnt := 0
 	for i := 1; i <= span; i++ {
 		startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
-		cpi, err := us.repo.GetClosedSupportIssues(since, until)
+		upi, err := us.repo.GetUpdatedSupportIssues(since, until)
+		if err != nil {
+			return nil, fmt.Errorf("get open issues : %s", err)
+		}
+		numCreated, numClosed := 0, 0
+		for _, issue := range upi {
+			if issue.State != nil && *issue.State == "closed" {
+				numClosed++
+			}
+			if issue.CreatedAt != nil && issue.CreatedAt.After(since) && issue.CreatedAt.Before(until) {
+				numCreated++
+			}
+		}
+
+		cli, err := us.repo.GetClosedSupportIssues(since, until)
 		if err != nil {
 			return nil, fmt.Errorf("get updated issues : %s", err)
 		}
 		monthlyStats.summaryStats[startEnd] = &summaryStats{
-			Span: startEnd,
+			Span:             startEnd,
+			NumClosedIssues:  numClosed,
+			NumCreatedIssues: numCreated,
 		}
-		for _, issue := range cpi {
+		for _, issue := range cli {
 			monthlyStats.detailStats[cnt] = &detailStats{}
-			if issue.State != nil && *issue.State == "closed" {
-				monthlyStats.summaryStats[startEnd].NumClosedIssues++
-			}
-			if issue.CreatedAt != nil && issue.CreatedAt.After(since) && issue.CreatedAt.Before(until) {
-				monthlyStats.summaryStats[startEnd].NumCreatedIssues++
-			}
 			if labelContains(issue.Labels, "genre:影響調査") {
 				monthlyStats.summaryStats[startEnd].NumGenreImpactSurveyIssues++
 				monthlyStats.detailStats[cnt].Genre = "影響調査"
@@ -314,6 +222,10 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 				monthlyStats.summaryStats[startEnd].NumGenreSpecSurveyIssues++
 				monthlyStats.detailStats[cnt].Genre = "仕様調査"
 			}
+			if labelContains(issue.Labels, "genre:障害調査") {
+				monthlyStats.summaryStats[startEnd].NumGenreIncidentSurveyIssues++
+				monthlyStats.detailStats[cnt].Genre = "障害調査"
+			}
 			if labelContains(issue.Labels, "TeamA単体解決") {
 				monthlyStats.summaryStats[startEnd].NumTeamAResolveIssues++
 				monthlyStats.detailStats[cnt].TeamAResolve = true
@@ -324,26 +236,40 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 			if labelContains(issue.Labels, "緊急度:低") {
 				monthlyStats.summaryStats[startEnd].NumUrgencyLowIssues++
 			}
+			if labelContains(issue.Labels, "Team-A") {
+				monthlyStats.detailStats[cnt].TeamName = "Team-A"
+			}
+			if labelContains(issue.Labels, "Team-B") {
+				monthlyStats.detailStats[cnt].TeamName = "Team-B"
+			}
 
-			totalTime := int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours()) / 24
+			var totalTime int
+			if issue.State != nil && *issue.State == "closed" {
+				totalTime = int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours())
+			} else {
+				totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
+			}
+
 			switch {
-			case totalTime <= 4:
+			case totalTime <= 2:
 				monthlyStats.summaryStats[startEnd].NumScoreA++
-			case totalTime <= 8:
+			case totalTime <= 5:
 				monthlyStats.summaryStats[startEnd].NumScoreB++
-			case totalTime <= 12:
+			case totalTime <= 10:
 				monthlyStats.summaryStats[startEnd].NumScoreC++
-			case totalTime <= 16:
+			case totalTime <= 20:
 				monthlyStats.summaryStats[startEnd].NumScoreD++
-			default:
+			case totalTime <= 30:
 				monthlyStats.summaryStats[startEnd].NumScoreE++
+			default:
+				monthlyStats.summaryStats[startEnd].NumScoreF++
 			}
 
 			monthlyStats.detailStats[cnt].Title = *issue.Title
-			monthlyStats.detailStats[cnt].URL = *issue.URL
+			monthlyStats.detailStats[cnt].HTMLURL = *issue.HTMLURL
 			monthlyStats.detailStats[cnt].NumComments = *issue.Comments
-			monthlyStats.detailStats[cnt].CreatedAt = issue.CreatedAt.Format("2006-01-02")
-			monthlyStats.detailStats[cnt].ClosedAt = issue.ClosedAt.Format("2006-01-02")
+			monthlyStats.detailStats[cnt].CreatedAt = issue.CreatedAt.In(jp).Format("2006-01-02")
+			monthlyStats.detailStats[cnt].ClosedAt = issue.ClosedAt.In(jp).Format("2006-01-02")
 			monthlyStats.detailStats[cnt].TargetSpan = startEnd
 
 			var assigns []string
@@ -366,18 +292,11 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 				}
 			}
 			monthlyStats.detailStats[cnt].Labels = strings.Join(labels, ",")
-
-			var duration time.Duration
-			if issue.State != nil && *issue.State == "closed" {
-				duration = issue.ClosedAt.Sub(*issue.CreatedAt)
-			} else {
-				duration = issue.UpdatedAt.Sub(*issue.CreatedAt)
-			}
-			monthlyStats.detailStats[cnt].OpenDuration = int(duration.Hours())
+			monthlyStats.detailStats[cnt].OpenDuration = totalTime
 
 			cnt++
 		}
-		monthlyStats.summaryStats[startEnd].NumClosedIssues = len(cpi)
+		monthlyStats.summaryStats[startEnd].NumClosedIssues = len(cli)
 		since = since.AddDate(0, 0, -7)
 		until = until.AddDate(0, 0, -7)
 
@@ -385,116 +304,97 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 	return monthlyStats, nil
 }
 
-// GetUserSupportStats
-func (us *userSupport) GetUserSupportStats(since, until time.Time) (*Stats, error) {
-	state := "open"
-	upi, err := us.repo.GetUpdatedSupportIssues(state, since, until)
-	if err != nil {
-		return nil, fmt.Errorf("get updated issues : %s", err)
-	}
-	opi, err := us.repo.GetCurrentOpenSupportIssues()
-	if err != nil {
-		return nil, fmt.Errorf("get open issues : %s", err)
-	}
-	labels, err := us.repo.GetCurrentRepoLabels()
-	if err != nil {
-		return nil, fmt.Errorf("get label list : %s", err)
-	}
-	fmt.Println(labels)
-
-	slabels, _, _ := us.repo.GetLabelsByQuery(233058313, "keyword:")
-	fmt.Println(slabels)
-
-	usStats := &Stats{
-		NumUpdatedIssues:     len(upi),
-		NumOpenIssues:        len(opi),
-		NumCommentsPerIssue:  make(map[string]int, len(upi)),
-		OpenDurationPerIssue: make(map[string]time.Duration, len(upi)),
-	}
-	for _, issue := range opi {
-		if labelContains(issue.Labels, "緊急度:高") || labelContains(issue.Labels, "緊急度:中") {
-			usStats.UrgencyHighIssues++
-			if labelContains(issue.Labels, "難易度:高") {
-				usStats.UrgencyHighDifficultyHighIssues++
-			}
-			if labelContains(issue.Labels, "難易度:低") {
-				usStats.UrgencyHighDifficultyLowIssues++
-			}
-		}
-		if labelContains(issue.Labels, "緊急度:低") {
-			usStats.UrgencyLowIssues++
-			if labelContains(issue.Labels, "難易度:高") {
-				usStats.UrgencyLowDifficultyHighIssues++
-			}
-			if labelContains(issue.Labels, "難易度:低") {
-				usStats.UrgencyLowDifficultyLowIssues++
-			}
-		}
-	}
-	numCreated, numClosed := 0, 0
-	for _, issue := range upi {
-		if issue.State != nil && *issue.State == "closed" {
-			numClosed++
-		}
-		if issue.CreatedAt != nil && issue.CreatedAt.After(since) && issue.CreatedAt.Before(until) {
-			numCreated++
-		}
-		title := fmt.Sprintf("[%s]%s", *issue.State, *issue.Title)
-		if issue.Comments != nil {
-			usStats.NumCommentsPerIssue[title] = *issue.Comments
-		}
-		if issue.State != nil && *issue.State == "closed" {
-			usStats.OpenDurationPerIssue[title] = issue.ClosedAt.Sub(*issue.CreatedAt)
-		} else {
-			usStats.OpenDurationPerIssue[title] = issue.UpdatedAt.Sub(*issue.CreatedAt)
-		}
-	}
-	usStats.NumClosedIssues = numClosed
-	usStats.NumCreatedIssues = numCreated
-	return usStats, nil
-}
-
-// GenReport generate report
-func (s *Stats) GenReport() string {
+// GenReport generate monthly report
+func (ms *monthlyStats) GenMonthlyReport() string {
 	var sb strings.Builder
-	sb.WriteString("項目, 情報\n")
-	sb.WriteString(fmt.Sprintf("Openチケット数, %d\n", s.NumOpenIssues))
-	sb.WriteString(fmt.Sprintf("新規作成されたチケット数, %d\n", s.NumCreatedIssues))
-	sb.WriteString(fmt.Sprintf("情報更新されたチケット数, %d\n", s.NumUpdatedIssues))
-	sb.WriteString(fmt.Sprintf("クローズしたチケット数, %d\n", s.NumClosedIssues))
-	sb.WriteString(fmt.Sprintf("緊急度:高 のチケット数, %d\n", s.UrgencyHighIssues))
-	sb.WriteString(fmt.Sprintf("かつ、難易度:高 のチケット数, %d\n", s.UrgencyHighDifficultyHighIssues))
-	sb.WriteString(fmt.Sprintf("かつ、難易度:低 のチケット数, %d\n", s.UrgencyHighDifficultyLowIssues))
-	sb.WriteString(fmt.Sprintf("緊急度:低 のチケット数, %d\n", s.UrgencyLowIssues))
-	sb.WriteString(fmt.Sprintf("かつ、難易度:高 のチケット数, %d\n", s.UrgencyLowDifficultyHighIssues))
-	sb.WriteString(fmt.Sprintf("かつ、難易度:低 のチケット数, %d\n", s.UrgencyLowDifficultyLowIssues))
-	{
-		// 経過時間を出すロジック
-		type kv struct {
-			Key string
-			Val time.Duration
-		}
-		var kvArr []kv
-		for k, v := range s.OpenDurationPerIssue {
-			kvArr = append(kvArr, kv{k, v})
-		}
-		// sort by duration
-		sort.Slice(kvArr, func(i, j int) bool {
-			return kvArr[i].Val > kvArr[j].Val
-		})
-		for _, kv := range kvArr {
-			// if >=10 {
-			// 	break
-			// }
-			totalHours := int(kv.Val.Hours())
-			tmp := int(kv.Val.Minutes())
-			fmt.Println(tmp)
-			dates := totalHours / 24
-			hours := totalHours % 24
-			sb.WriteString(fmt.Sprintf("%s, %dd %dh\n", kv.Key, dates, hours))
-		}
-	}
+	var Span []string
+	var NumCreatedIssues []string
+	var NumClosedIssues []string
+	var NumGenreRequestIssues []string
+	var NumGenreLogSurveyIssues []string
+	var NumGenreImpactSurveyIssues []string
+	var NumGenreSpecSurveyIssues []string
+	var NumGenreIncidentSurveyIssues []string
+	var NumTeamAResolveIssues []string
+	var NumTeamAResolvePercentage []string
+	var NumScoreA []string
+	var NumScoreB []string
+	var NumScoreC []string
+	var NumScoreD []string
+	var NumScoreE []string
+	var NumScoreF []string
 
+	type kv struct {
+		Key string
+		Val *summaryStats
+	}
+	var kvArr []kv
+	for k, v := range ms.summaryStats {
+		kvArr = append(kvArr, kv{k, v})
+	}
+	// sort by Span
+	sort.Slice(kvArr, func(i, j int) bool {
+		return kvArr[i].Val.Span < kvArr[j].Val.Span
+	})
+
+	for _, d := range kvArr {
+		Span = append(Span, d.Val.Span)
+		NumCreatedIssues = append(NumCreatedIssues, strconv.Itoa(d.Val.NumCreatedIssues))
+		NumClosedIssues = append(NumClosedIssues, strconv.Itoa(d.Val.NumClosedIssues))
+		NumGenreRequestIssues = append(NumGenreRequestIssues, strconv.Itoa(d.Val.NumGenreRequestIssues))
+		NumGenreLogSurveyIssues = append(NumGenreLogSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
+		NumGenreImpactSurveyIssues = append(NumGenreImpactSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
+		NumGenreSpecSurveyIssues = append(NumGenreSpecSurveyIssues, strconv.Itoa(d.Val.NumGenreSpecSurveyIssues))
+		NumGenreIncidentSurveyIssues = append(NumGenreIncidentSurveyIssues, strconv.Itoa(d.Val.NumGenreIncidentSurveyIssues))
+		NumTeamAResolveIssues = append(NumTeamAResolveIssues, strconv.Itoa(d.Val.NumTeamAResolveIssues))
+		if d.Val.NumTeamAResolveIssues != 0 {
+			if d.Val.NumClosedIssues != 0 {
+				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, fmt.Sprintf("%.1f", (float64(d.Val.NumTeamAResolveIssues)/float64(d.Val.NumClosedIssues)*100)))
+			} else {
+				NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
+			}
+		} else {
+			NumTeamAResolvePercentage = append(NumTeamAResolvePercentage, "0")
+		}
+
+		NumScoreA = append(NumScoreA, strconv.Itoa(d.Val.NumScoreA))
+		NumScoreB = append(NumScoreB, strconv.Itoa(d.Val.NumScoreB))
+		NumScoreC = append(NumScoreC, strconv.Itoa(d.Val.NumScoreC))
+		NumScoreD = append(NumScoreD, strconv.Itoa(d.Val.NumScoreD))
+		NumScoreE = append(NumScoreE, strconv.Itoa(d.Val.NumScoreE))
+		NumScoreF = append(NumScoreF, strconv.Itoa(d.Val.NumScoreF))
+	}
+	sb.WriteString(fmt.Sprintf("## サマリー \n"))
+	sb.WriteString(fmt.Sprintf("|項目|"))
+	sb.WriteString(fmt.Sprintf("%s|\n", strings.Join(Span, "|")))
+	sb.WriteString(fmt.Sprintf("|----|"))
+	for i := 0; i < len(kvArr); i++ {
+		sb.WriteString(fmt.Sprintf("----|"))
+	}
+	sb.WriteString(fmt.Sprintf("\n"))
+	sb.WriteString(fmt.Sprintf("|起票件数|%s|\n", strings.Join(NumCreatedIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|Team-A完結件数|%s|\n", strings.Join(NumTeamAResolveIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|クローズ件数|%s|\n", strings.Join(NumClosedIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|Team-A完結率(％)|%s|\n", strings.Join(NumTeamAResolvePercentage, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:要望件数|%s|\n", strings.Join(NumGenreRequestIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:ログ調査件数|%s|\n", strings.Join(NumGenreLogSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:影響調査件数|%s|\n", strings.Join(NumGenreImpactSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:仕様調査件数|%s|\n", strings.Join(NumGenreSpecSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|ジャンル:障害調査件数|%s|\n", strings.Join(NumGenreIncidentSurveyIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアA|%s|\n", strings.Join(NumScoreA, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアB|%s|\n", strings.Join(NumScoreB, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアC|%s|\n", strings.Join(NumScoreC, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアD|%s|\n", strings.Join(NumScoreD, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアE|%s|\n", strings.Join(NumScoreE, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアF|%s|\n", strings.Join(NumScoreF, "|")))
+	sb.WriteString(fmt.Sprintf("\n"))
+
+	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
+	for _, d := range ms.detailStats {
+		dates := d.OpenDuration / 24
+		hours := d.OpenDuration % 24
+		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間:%dd%dh,解決フラグ:%t,span:%s\n", d.Title, d.HTMLURL, d.Urgency, d.Genre, d.TeamName, d.Assignee, d.NumComments, dates, hours, d.TeamAResolve, d.TargetSpan))
+	}
 	return sb.String()
 }
 
