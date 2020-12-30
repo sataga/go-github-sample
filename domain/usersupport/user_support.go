@@ -236,8 +236,20 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 			if labelContains(issue.Labels, "緊急度:低") {
 				monthlyStats.summaryStats[startEnd].NumUrgencyLowIssues++
 			}
+			if labelContains(issue.Labels, "Team-A") {
+				monthlyStats.detailStats[cnt].TeamName = "Team-A"
+			}
+			if labelContains(issue.Labels, "Team-B") {
+				monthlyStats.detailStats[cnt].TeamName = "Team-B"
+			}
 
-			totalTime := int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours()) / 24
+			var totalTime int
+			if issue.State != nil && *issue.State == "closed" {
+				totalTime = int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours())
+			} else {
+				totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
+			}
+
 			switch {
 			case totalTime <= 2:
 				monthlyStats.summaryStats[startEnd].NumScoreA++
@@ -280,14 +292,7 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 				}
 			}
 			monthlyStats.detailStats[cnt].Labels = strings.Join(labels, ",")
-
-			var duration time.Duration
-			if issue.State != nil && *issue.State == "closed" {
-				duration = issue.ClosedAt.Sub(*issue.CreatedAt)
-			} else {
-				duration = issue.UpdatedAt.Sub(*issue.CreatedAt)
-			}
-			monthlyStats.detailStats[cnt].OpenDuration = int(duration.Hours())
+			monthlyStats.detailStats[cnt].OpenDuration = totalTime
 
 			cnt++
 		}
@@ -386,7 +391,9 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 
 	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
 	for _, d := range ms.detailStats {
-		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", d.Title, d.HTMLURL, d.Urgency, d.Genre, d.Assignee, d.NumComments, d.OpenDuration, d.TeamAResolve, d.TargetSpan))
+		dates := d.OpenDuration / 24
+		hours := d.OpenDuration % 24
+		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間:%dd%dh,解決フラグ:%t,span:%s\n", d.Title, d.HTMLURL, d.Urgency, d.Genre, d.TeamName, d.Assignee, d.NumComments, dates, hours, d.TeamAResolve, d.TargetSpan))
 	}
 	return sb.String()
 }
