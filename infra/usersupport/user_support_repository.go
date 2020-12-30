@@ -20,8 +20,8 @@ func NewUserSupportRepository(ghClient igh.Client) dus.Repository {
 	}
 }
 
-func (r *userSupportRepository) GetUpdatedSupportIssues(state string, since, until time.Time) ([]*github.Issue, error) {
-	issues, err := r.ghClient.ListRepoIssuesSince("sataga", "issue-warehouse", since, state, []string{"support"})
+func (r *userSupportRepository) GetUpdatedSupportIssues(since, until time.Time) ([]*github.Issue, error) {
+	issues, err := r.ghClient.ListRepoIssuesSince("sataga", "issue-warehouse", since, "all", []string{"support"})
 	if err != nil {
 		return nil, fmt.Errorf("list repo issues: %s", err)
 	}

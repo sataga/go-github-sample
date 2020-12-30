@@ -23,7 +23,7 @@ type UserSupport interface {
 
 // Repository r/w data which usersupport domain requires
 type Repository interface {
-	GetUpdatedSupportIssues(state string, since, until time.Time) ([]*github.Issue, error)
+	GetUpdatedSupportIssues(since, until time.Time) ([]*github.Issue, error)
 	GetClosedSupportIssues(since, until time.Time) ([]*github.Issue, error)
 	GetCurrentOpenNotUpdatedSupportIssues(until time.Time) ([]*github.Issue, error)
 	GetCurrentOpenSupportIssues() ([]*github.Issue, error)
@@ -38,21 +38,12 @@ type userSupport struct {
 
 // dailyStats is stats open data from GitHub
 type dailyStats struct {
-	NumNotUpdatedIssues int                       `yaml:"num_not_updated_issues"`
-	NumTeamAResponse    int                       `yaml:"num_team_a_response"`
-	NumTeamBResponse    int                       `yaml:"num_team_b_response"`
-	UrgencyHighIssues   int                       `yaml:"num_urgency_high_issues"`
-	UrgencyLowIssues    int                       `yaml:"num_urgency_low_issues"`
-	NotUpdatedIssues    map[int]*NotUpdatedIssues `yaml:"not_updated_issues"`
-}
-
-// NotUpdatedIssues is dailyStats of datail
-type NotUpdatedIssues struct {
-	Title        string        `yaml:"not_updated_issues_of_title"`
-	HTMLURL      string        `yaml:"not_updated_issues_of_issue_url"`
-	Assign       string        `yaml:"not_updated_issues_of_assign"`
-	NumComments  int           `yaml:"not_updated_issues_of_num_comment"`
-	OpenDuration time.Duration `yaml:"not_updated_issues_of_open_duration"`
+	NumNotUpdatedIssues int                  `yaml:"num_not_updated_issues"`
+	NumTeamAResponse    int                  `yaml:"num_team_a_response"`
+	NumTeamBResponse    int                  `yaml:"num_team_b_response"`
+	UrgencyHighIssues   int                  `yaml:"num_urgency_high_issues"`
+	UrgencyLowIssues    int                  `yaml:"num_urgency_low_issues"`
+	detailStats         map[int]*detailStats `yaml:"detail_stats"`
 }
 type monthlyStats struct {
 	summaryStats map[string]*summaryStats `yaml:"summary_stats"`
@@ -84,6 +75,7 @@ type detailStats struct {
 	CreatedAt    string `yaml:"detail_stats_of_created_at"`
 	ClosedAt     string `yaml:"detail_stats_of_closed_at"`
 	TargetSpan   string `yaml:"detail_stats_of_target_span"`
+	TeamName     string `yaml:"detail_stats_of_team_name"`
 	Urgency      string `yaml:"detail_stats_of_urgency"`
 	TeamAResolve bool   `yaml:"detail_stats_of_team_a_resolve"`
 	Genre        string `yaml:"detail_stats_of_genre"`
@@ -108,27 +100,36 @@ func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error)
 	}
 	dailyStats := &dailyStats{
 		NumNotUpdatedIssues: len(opi),
-		NotUpdatedIssues:    make(map[int]*NotUpdatedIssues, len(opi)),
+		detailStats:         make(map[int]*detailStats, len(opi)),
 	}
 	for i, issue := range opi {
-		if labelContains(issue.Labels, "緊急度:高") || labelContains(issue.Labels, "緊急度:中") {
+		dailyStats.detailStats[i] = &detailStats{}
+		if labelContains(issue.Labels, "緊急度:高") {
 			dailyStats.UrgencyHighIssues++
+			dailyStats.detailStats[i].Urgency = "高"
+		}
+		if labelContains(issue.Labels, "緊急度:中") {
+			dailyStats.UrgencyHighIssues++
+			dailyStats.detailStats[i].Urgency = "中"
 		}
 		if labelContains(issue.Labels, "緊急度:低") {
 			dailyStats.UrgencyLowIssues++
+			dailyStats.detailStats[i].Urgency = "低"
 		}
 		if labelContains(issue.Labels, "Team-A") {
 			dailyStats.NumTeamAResponse++
+			dailyStats.detailStats[i].TeamName = "Team-A"
 		}
 		if labelContains(issue.Labels, "Team-B") {
 			dailyStats.NumTeamBResponse++
+			dailyStats.detailStats[i].TeamName = "Team-B"
 		}
 
-		var duration time.Duration
+		var totalTime int
 		if issue.State != nil && *issue.State == "closed" {
-			duration = issue.ClosedAt.Sub(*issue.CreatedAt)
+			totalTime = int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours())
 		} else {
-			duration = issue.UpdatedAt.Sub(*issue.CreatedAt)
+			totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
 		}
 
 		var assigns []string
@@ -136,20 +137,15 @@ func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error)
 			for _, assign := range issue.Assignees {
 				assigns = append(assigns, "@"+*assign.Login)
 			}
-			// assign := strings.Join(, ",")
 		}
 
-		if issue.Title != nil && issue.HTMLURL != nil && issue.Comments != nil {
-			dailyStats.NotUpdatedIssues[i] = &NotUpdatedIssues{
-				Title:        *issue.Title,
-				HTMLURL:      *issue.HTMLURL,
-				Assign:       strings.Join(assigns, ","),
-				NumComments:  *issue.Comments,
-				OpenDuration: duration,
-			}
-		}
+		dailyStats.detailStats[i].Title = *issue.Title
+		dailyStats.detailStats[i].HTMLURL = *issue.HTMLURL
+		dailyStats.detailStats[i].Assignee = strings.Join(assigns, ",")
+		dailyStats.detailStats[i].NumComments = *issue.Comments
+		dailyStats.detailStats[i].CreatedAt = issue.CreatedAt.In(jp).Format("2006-01-02")
+		dailyStats.detailStats[i].OpenDuration = totalTime
 	}
-	// fmt.Printf("%v", dailyStats)
 	return dailyStats, nil
 }
 
@@ -161,15 +157,14 @@ func (s *dailyStats) GetDailyReportStats() string {
 	sb.WriteString(fmt.Sprintf("Team-A 未更新チケット数, %d\n", s.NumTeamAResponse))
 	sb.WriteString(fmt.Sprintf("Team-B 未更新チケット数, %d\n", s.NumTeamBResponse))
 	sb.WriteString(fmt.Sprintf("=== 詳細((チケットリンク/Openからの経過時間)) ===\n"))
-	for _, issue := range s.NotUpdatedIssues {
-		totalHours := int(issue.OpenDuration.Hours())
-		dates := totalHours / 24
-		hours := totalHours % 24
+	for _, issue := range s.detailStats {
+		dates := issue.OpenDuration / 24
+		hours := issue.OpenDuration % 24
 		sb.WriteString(fmt.Sprintf("- <%s|%s> ", issue.HTMLURL, issue.Title))
-		sb.WriteString(fmt.Sprintf("%dd %dh ", dates, hours))
-		sb.WriteString(fmt.Sprintf("%s\n", issue.Assign))
+		sb.WriteString(fmt.Sprintf("%dd%dh ", dates, hours))
+		sb.WriteString(fmt.Sprintf("%s/", issue.TeamName))
+		sb.WriteString(fmt.Sprintf("%s\n", issue.Assignee))
 	}
-
 	return sb.String()
 }
 
@@ -278,21 +273,31 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 	cnt := 0
 	for i := 1; i <= span; i++ {
 		startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
+		upi, err := us.repo.GetUpdatedSupportIssues(since, until)
+		if err != nil {
+			return nil, fmt.Errorf("get open issues : %s", err)
+		}
+		numCreated, numClosed := 0, 0
+		for _, issue := range upi {
+			if issue.State != nil && *issue.State == "closed" {
+				numClosed++
+			}
+			if issue.CreatedAt != nil && issue.CreatedAt.After(since) && issue.CreatedAt.Before(until) {
+				numCreated++
+			}
+		}
+
 		cli, err := us.repo.GetClosedSupportIssues(since, until)
 		if err != nil {
 			return nil, fmt.Errorf("get updated issues : %s", err)
 		}
 		monthlyStats.summaryStats[startEnd] = &summaryStats{
-			Span: startEnd,
+			Span:             startEnd,
+			NumClosedIssues:  numClosed,
+			NumCreatedIssues: numCreated,
 		}
 		for _, issue := range cli {
 			monthlyStats.detailStats[cnt] = &detailStats{}
-			if issue.State != nil && *issue.State == "closed" {
-				monthlyStats.summaryStats[startEnd].NumClosedIssues++
-			}
-			if issue.CreatedAt != nil && issue.CreatedAt.After(since) && issue.CreatedAt.Before(until) {
-				monthlyStats.summaryStats[startEnd].NumCreatedIssues++
-			}
 			if labelContains(issue.Labels, "genre:影響調査") {
 				monthlyStats.summaryStats[startEnd].NumGenreImpactSurveyIssues++
 				monthlyStats.detailStats[cnt].Genre = "影響調査"
