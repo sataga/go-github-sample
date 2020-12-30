@@ -45,7 +45,7 @@ type dailyStats struct {
 // NotUpdatedIssues is dailyStats of datail
 type NotUpdatedIssues struct {
 	Title        string        `yaml:"not_updated_issues_of_title"`
-	URL          string        `yaml:"not_updated_issues_of_issue_url"`
+	HTMLURL      string        `yaml:"not_updated_issues_of_issue_url"`
 	Assign       string        `yaml:"not_updated_issues_of_assign"`
 	NumComments  int           `yaml:"not_updated_issues_of_num_comment"`
 	OpenDuration time.Duration `yaml:"not_updated_issues_of_open_duration"`
@@ -55,21 +55,23 @@ type monthlyStats struct {
 	detailStats  map[int]*detailStats     `yaml:"detail_stats"`
 }
 type summaryStats struct {
-	Span                       string `yajl:"span"`
-	NumCreatedIssues           int    `yaml:"num_created_issues"`
-	NumClosedIssues            int    `yaml:"num_closed_issues"`
-	NumGenreRequestIssues      int    `yaml:"num_genre_issues"`
-	NumGenreLogSurveyIssues    int    `yaml:"num_genre_log_survey_issues"`
-	NumGenreImpactSurveyIssues int    `yaml:"num_genre_impact_survey_issues"`
-	NumGenreSpecSurveyIssues   int    `yaml:"num_genre_spec_survey_issues"`
-	NumTeamAResolveIssues      int    `yaml:"num_team_a_resolve_issues"`
-	NumUrgencyHighIssues       int    `yaml:"num_urgency_high_issues"`
-	NumUrgencyLowIssues        int    `yaml:"num_urgency_low_issues"`
-	NumScoreA                  int    `yaml:"num_score_A"`
-	NumScoreB                  int    `yaml:"num_score_B"`
-	NumScoreC                  int    `yaml:"num_score_C"`
-	NumScoreD                  int    `yaml:"num_score_D"`
-	NumScoreE                  int    `yaml:"num_score_E"`
+	Span                         string `yajl:"span"`
+	NumCreatedIssues             int    `yaml:"num_created_issues"`
+	NumClosedIssues              int    `yaml:"num_closed_issues"`
+	NumGenreRequestIssues        int    `yaml:"num_genre_issues"`
+	NumGenreLogSurveyIssues      int    `yaml:"num_genre_log_survey_issues"`
+	NumGenreImpactSurveyIssues   int    `yaml:"num_genre_impact_survey_issues"`
+	NumGenreSpecSurveyIssues     int    `yaml:"num_genre_spec_survey_issues"`
+	NumGenreIncidentSurveyIssues int    `yaml:"num_genre_incident_survey_issues"`
+	NumTeamAResolveIssues        int    `yaml:"num_team_a_resolve_issues"`
+	NumUrgencyHighIssues         int    `yaml:"num_urgency_high_issues"`
+	NumUrgencyLowIssues          int    `yaml:"num_urgency_low_issues"`
+	NumScoreA                    int    `yaml:"num_score_A"`
+	NumScoreB                    int    `yaml:"num_score_B"`
+	NumScoreC                    int    `yaml:"num_score_C"`
+	NumScoreD                    int    `yaml:"num_score_D"`
+	NumScoreE                    int    `yaml:"num_score_E"`
+	NumScoreF                    int    `yaml:"num_score_F"`
 }
 
 type detailStats struct {
@@ -133,10 +135,10 @@ func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error)
 			// assign := strings.Join(, ",")
 		}
 
-		if issue.Title != nil && issue.URL != nil && issue.Comments != nil {
+		if issue.Title != nil && issue.HTMLURL != nil && issue.Comments != nil {
 			dailyStats.NotUpdatedIssues[i] = &NotUpdatedIssues{
 				Title:        *issue.Title,
-				URL:          *issue.URL,
+				HTMLURL:      *issue.HTMLURL,
 				Assign:       strings.Join(assigns, ","),
 				NumComments:  *issue.Comments,
 				OpenDuration: duration,
@@ -159,7 +161,7 @@ func (s *dailyStats) GetDailyReportStats() string {
 		totalHours := int(issue.OpenDuration.Hours())
 		dates := totalHours / 24
 		hours := totalHours % 24
-		sb.WriteString(fmt.Sprintf("- <%s|%s> ", issue.URL, issue.Title))
+		sb.WriteString(fmt.Sprintf("- <%s|%s> ", issue.HTMLURL, issue.Title))
 		sb.WriteString(fmt.Sprintf("%dd %dh ", dates, hours))
 		sb.WriteString(fmt.Sprintf("%s\n", issue.Assign))
 	}
@@ -177,6 +179,7 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 	var NumGenreLogSurveyIssues []string
 	var NumGenreImpactSurveyIssues []string
 	var NumGenreSpecSurveyIssues []string
+	var NumGenreIncidentSurveyIssues []string
 	var NumTeamAResolveIssues []string
 	var NumTeamAResolvePercentage []string
 	var NumScoreA []string
@@ -184,6 +187,7 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 	var NumScoreC []string
 	var NumScoreD []string
 	var NumScoreE []string
+	var NumScoreF []string
 
 	type kv struct {
 		Key string
@@ -206,6 +210,7 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 		NumGenreLogSurveyIssues = append(NumGenreLogSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
 		NumGenreImpactSurveyIssues = append(NumGenreImpactSurveyIssues, strconv.Itoa(d.Val.NumGenreLogSurveyIssues))
 		NumGenreSpecSurveyIssues = append(NumGenreSpecSurveyIssues, strconv.Itoa(d.Val.NumGenreSpecSurveyIssues))
+		NumGenreIncidentSurveyIssues = append(NumGenreIncidentSurveyIssues, strconv.Itoa(d.Val.NumGenreIncidentSurveyIssues))
 		NumTeamAResolveIssues = append(NumTeamAResolveIssues, strconv.Itoa(d.Val.NumTeamAResolveIssues))
 		if d.Val.NumTeamAResolveIssues != 0 {
 			if d.Val.NumClosedIssues != 0 {
@@ -222,6 +227,7 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 		NumScoreC = append(NumScoreC, strconv.Itoa(d.Val.NumScoreC))
 		NumScoreD = append(NumScoreD, strconv.Itoa(d.Val.NumScoreD))
 		NumScoreE = append(NumScoreE, strconv.Itoa(d.Val.NumScoreE))
+		NumScoreF = append(NumScoreF, strconv.Itoa(d.Val.NumScoreF))
 	}
 	sb.WriteString(fmt.Sprintf("## サマリー \n"))
 	sb.WriteString(fmt.Sprintf("|項目|"))
@@ -244,6 +250,7 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 	sb.WriteString(fmt.Sprintf("|スコアC|%s|\n", strings.Join(NumScoreC, "|")))
 	sb.WriteString(fmt.Sprintf("|スコアD|%s|\n", strings.Join(NumScoreD, "|")))
 	sb.WriteString(fmt.Sprintf("|スコアE|%s|\n", strings.Join(NumScoreE, "|")))
+	sb.WriteString(fmt.Sprintf("|スコアF|%s|\n", strings.Join(NumScoreF, "|")))
 	sb.WriteString(fmt.Sprintf("\n"))
 
 	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
@@ -266,14 +273,14 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 	cnt := 0
 	for i := 1; i <= span; i++ {
 		startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
-		cpi, err := us.repo.GetClosedSupportIssues(since, until)
+		cli, err := us.repo.GetClosedSupportIssues(since, until)
 		if err != nil {
 			return nil, fmt.Errorf("get updated issues : %s", err)
 		}
 		monthlyStats.summaryStats[startEnd] = &summaryStats{
 			Span: startEnd,
 		}
-		for _, issue := range cpi {
+		for _, issue := range cli {
 			monthlyStats.detailStats[cnt] = &detailStats{}
 			if issue.State != nil && *issue.State == "closed" {
 				monthlyStats.summaryStats[startEnd].NumClosedIssues++
@@ -297,6 +304,10 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 				monthlyStats.summaryStats[startEnd].NumGenreSpecSurveyIssues++
 				monthlyStats.detailStats[cnt].Genre = "仕様調査"
 			}
+			if labelContains(issue.Labels, "genre:障害調査") {
+				monthlyStats.summaryStats[startEnd].NumGenreIncidentSurveyIssues++
+				monthlyStats.detailStats[cnt].Genre = "障害調査"
+			}
 			if labelContains(issue.Labels, "TeamA単体解決") {
 				monthlyStats.summaryStats[startEnd].NumTeamAResolveIssues++
 				monthlyStats.detailStats[cnt].TeamAResolve = true
@@ -310,20 +321,22 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 
 			totalTime := int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours()) / 24
 			switch {
-			case totalTime <= 4:
+			case totalTime <= 2:
 				monthlyStats.summaryStats[startEnd].NumScoreA++
-			case totalTime <= 8:
+			case totalTime <= 5:
 				monthlyStats.summaryStats[startEnd].NumScoreB++
-			case totalTime <= 12:
+			case totalTime <= 10:
 				monthlyStats.summaryStats[startEnd].NumScoreC++
-			case totalTime <= 16:
+			case totalTime <= 20:
 				monthlyStats.summaryStats[startEnd].NumScoreD++
-			default:
+			case totalTime <= 30:
 				monthlyStats.summaryStats[startEnd].NumScoreE++
+			default:
+				monthlyStats.summaryStats[startEnd].NumScoreF++
 			}
 
 			monthlyStats.detailStats[cnt].Title = *issue.Title
-			monthlyStats.detailStats[cnt].URL = *issue.URL
+			monthlyStats.detailStats[cnt].URL = *issue.HTMLURL
 			monthlyStats.detailStats[cnt].NumComments = *issue.Comments
 			monthlyStats.detailStats[cnt].CreatedAt = issue.CreatedAt.Format("2006-01-02")
 			monthlyStats.detailStats[cnt].ClosedAt = issue.ClosedAt.Format("2006-01-02")
@@ -360,7 +373,7 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 
 			cnt++
 		}
-		monthlyStats.summaryStats[startEnd].NumClosedIssues = len(cpi)
+		monthlyStats.summaryStats[startEnd].NumClosedIssues = len(cli)
 		since = since.AddDate(0, 0, -7)
 		until = until.AddDate(0, 0, -7)
 

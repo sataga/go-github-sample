@@ -62,13 +62,12 @@ func main() {
 		}
 		fmt.Printf("dailyReportStats Until: %s\n", until)
 		fmt.Printf("%s", dairyStats.GetDailyReportStats())
-
-		channel := "times_t-sataga"
-		username := "t-sataga"
-		_, err = slack.PostMessage(channel, username, dairyStats.GetDailyReportStats())
-		if err != nil {
-			log.Fatalf("slack post message failed: %s", err)
-		}
+		// channel := "times_t-sataga"
+		// username := "t-sataga"
+		// _, err = slack.PostMessage(channel, username, dairyStats.GetDailyReportStats())
+		// if err != nil {
+		// 	log.Fatalf("slack post message failed: %s", err)
+		// }
 	case "monthly-report":
 		if err := userSupportFlag.Parse(subCommandArgs[1:]); err != nil {
 			log.Fatalf("parsing user support flag: %s", err)
