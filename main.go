@@ -87,6 +87,26 @@ func main() {
 			log.Fatalf("get user support stats: %s", err)
 		}
 		fmt.Printf("%s", monthlyStats.GenMonthlyReport())
+	case "analysis-report":
+		if err := userSupportFlag.Parse(subCommandArgs[1:]); err != nil {
+			log.Fatalf("parsing user support flag: %s", err)
+		}
+		usrepo := ius.NewUserSupportRepository(ghcli)
+		us := dus.NewUserSupport(usrepo)
+		var since, until time.Time
+		var err error
+		if since, err = time.Parse("2006-01-02", *sinceStr); err != nil {
+			log.Fatalf("could not parse: %s", *sinceStr)
+		}
+		if until, err = time.Parse("2006-01-02", *untilStr); err != nil {
+			log.Fatalf("could not parse: %s", *untilStr)
+		}
+		fmt.Printf("Reporting Stats From: %s, Until: %s\n", since, until)
+		analysisStats, err := us.GetAnalysisReportStats(since, until)
+		if err != nil {
+			log.Fatalf("get user support stats: %s", err)
+		}
+		fmt.Printf("%s", analysisStats.GenAnalysisReport())
 	case "slacktest":
 		channel := "times_t-sataga"
 		username := "t-sataga"
@@ -95,5 +115,26 @@ func main() {
 		if err != nil {
 			log.Fatalf("slack post message failed: %s", err)
 		}
+	case "methodtest":
+		if err := userSupportFlag.Parse(subCommandArgs[1:]); err != nil {
+			log.Fatalf("parsing user support flag: %s", err)
+		}
+		usrepo := ius.NewUserSupportRepository(ghcli)
+		us := dus.NewUserSupport(usrepo)
+		var since, until time.Time
+		var err error
+		if since, err = time.Parse("2006-01-02", *sinceStr); err != nil {
+			log.Fatalf("could not parse: %s", *sinceStr)
+		}
+		if until, err = time.Parse("2006-01-02", *untilStr); err != nil {
+			log.Fatalf("could not parse: %s", *untilStr)
+		}
+		fmt.Printf("Reporting Stats From: %s, Until: %s\n", since, until)
+		testStats, err := us.MethodTest(since, until)
+		if err != nil {
+			log.Fatalf("get user support stats: %s", err)
+		}
+		fmt.Printf("%s", testStats)
 	}
+
 }

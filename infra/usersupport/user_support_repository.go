@@ -27,7 +27,7 @@ func (r *userSupportRepository) GetUpdatedSupportIssues(since, until time.Time) 
 	}
 	iss := make([]*github.Issue, 0, len(issues))
 	for _, is := range issues {
-		if is.UpdatedAt.Before(until) {
+		if is.UpdatedAt.After(since) && is.UpdatedAt.Before(until) {
 			iss = append(iss, is)
 		}
 	}
