@@ -81,11 +81,11 @@ func main() {
 		if until, err = time.Parse("2006-01-02", *untilStr); err != nil {
 			log.Fatalf("could not parse: %s", *untilStr)
 		}
-		monthlyStats, err := us.GetMonthlyReportStats(since, until)
+		MonthlyStats, err := us.GetMonthlyReportStats(since, until)
 		if err != nil {
 			log.Fatalf("get user support stats: %s", err)
 		}
-		fmt.Printf("%s", monthlyStats.GenMonthlyReport())
+		fmt.Printf("%s", MonthlyStats.GenMonthlyReport())
 	case "analysis-report":
 		if err := userSupportFlag.Parse(subCommandArgs[1:]); err != nil {
 			log.Fatalf("parsing user support flag: %s", err)
@@ -101,11 +101,11 @@ func main() {
 			log.Fatalf("could not parse: %s", *untilStr)
 		}
 		fmt.Printf("Reporting Stats From: %s, Until: %s\n", since, until)
-		analysisStats, err := us.GetAnalysisReportStats(since, until)
+		AnalysisStats, err := us.GetAnalysisReportStats(since, until)
 		if err != nil {
 			log.Fatalf("get user support stats: %s", err)
 		}
-		fmt.Printf("%s", analysisStats.GenAnalysisReport())
+		fmt.Printf("%s", AnalysisStats.GenAnalysisReport())
 	case "slacktest":
 		channel := "times_t-sataga"
 		username := "t-sataga"
