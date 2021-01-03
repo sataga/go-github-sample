@@ -60,7 +60,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("get user support stats: %s", err)
 		}
-		fmt.Printf("dailyReportStats Until: %s\n", until)
 		fmt.Printf("%s", dairyStats.GetDailyReportStats())
 		// channel := "times_t-sataga"
 		// username := "t-sataga"
@@ -134,7 +133,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("get user support stats: %s", err)
 		}
-		fmt.Printf("%s", testStats)
+		fmt.Printf("%v", testStats)
 	}
 
 }
