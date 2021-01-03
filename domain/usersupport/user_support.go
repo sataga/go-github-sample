@@ -225,7 +225,6 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 			} else {
 				totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
 			}
-
 			switch {
 			case totalTime <= 2:
 				monthlyStats.summaryStats[startEnd].NumScoreA++
@@ -379,9 +378,9 @@ func (us *userSupport) GetAnalysisReportStats(since, until time.Time) (*analysis
 // GenReport generate analysis report
 func (as *analysisStats) GenAnalysisReport() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("期間,Title,起票日,クローズ日,ステータス,担当チーム,担当アサイン,緊急度,問い合わせ種別,コメント数,経過時間,Keywordラベル\n"))
+	sb.WriteString(fmt.Sprintf("期間,Title,起票日,クローズ日,ステータス,担当チーム,担当アサイン,緊急度,問い合わせ種別,コメント数,経過時間,Keywordラベル,URL\n"))
 	for _, d := range as.detailStats {
-		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s \n", d.TargetSpan, d.Title, d.CreatedAt, d.ClosedAt, d.State, d.TeamName, d.Assignee, d.Urgency, d.Genre, d.NumComments, d.OpenDuration, d.Labels))
+		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s,%s \n", d.TargetSpan, d.Title, d.CreatedAt, d.ClosedAt, d.State, d.TeamName, d.Assignee, d.Urgency, d.Genre, d.NumComments, d.OpenDuration, d.Labels, d.HTMLURL))
 	}
 	return sb.String()
 }
