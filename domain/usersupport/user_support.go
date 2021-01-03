@@ -18,6 +18,8 @@ var (
 type UserSupport interface {
 	GetDailyReportStats(until time.Time) (*dailyStats, error)
 	GetMonthlyReportStats(since, until time.Time) (*monthlyStats, error)
+	GetAnalysisReportStats(since, until time.Time) (*analysisStats, error)
+	MethodTest(since, until time.Time) (*analysisStats, error)
 	// GenMonthlyReport(data map[string]*monthlyStats) string
 }
 
@@ -49,6 +51,10 @@ type monthlyStats struct {
 	summaryStats map[string]*summaryStats `yaml:"summary_stats"`
 	detailStats  map[int]*detailStats     `yaml:"detail_stats"`
 }
+
+type analysisStats struct {
+	detailStats map[int]*detailStats `yaml:"detail_stats"`
+}
 type summaryStats struct {
 	Span                         string `yajl:"span"`
 	NumCreatedIssues             int    `yaml:"num_created_issues"`
@@ -74,6 +80,7 @@ type detailStats struct {
 	HTMLURL      string `yaml:"detail_stats_of_issue_url"`
 	CreatedAt    string `yaml:"detail_stats_of_created_at"`
 	ClosedAt     string `yaml:"detail_stats_of_closed_at"`
+	State        string `yaml:"detail_stats_of_state"`
 	TargetSpan   string `yaml:"detail_stats_of_target_span"`
 	TeamName     string `yaml:"detail_stats_of_team_name"`
 	Urgency      string `yaml:"detail_stats_of_urgency"`
@@ -94,6 +101,7 @@ func NewUserSupport(repo Repository) UserSupport {
 
 // GetDailryReport
 func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error) {
+	startEnd := fmt.Sprintf("%s", until.Format("2006-01-02"))
 	opi, err := us.repo.GetCurrentOpenNotUpdatedSupportIssues(until)
 	if err != nil {
 		return nil, fmt.Errorf("get open issues : %s", err)
@@ -124,27 +132,7 @@ func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error)
 			dailyStats.NumTeamBResponse++
 			dailyStats.detailStats[i].TeamName = "Team-B"
 		}
-
-		var totalTime int
-		if issue.State != nil && *issue.State == "closed" {
-			totalTime = int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours())
-		} else {
-			totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
-		}
-
-		var assigns []string
-		if issue.Assignees != nil {
-			for _, assign := range issue.Assignees {
-				assigns = append(assigns, "@"+*assign.Login)
-			}
-		}
-
-		dailyStats.detailStats[i].Title = *issue.Title
-		dailyStats.detailStats[i].HTMLURL = *issue.HTMLURL
-		dailyStats.detailStats[i].Assignee = strings.Join(assigns, ",")
-		dailyStats.detailStats[i].NumComments = *issue.Comments
-		dailyStats.detailStats[i].CreatedAt = issue.CreatedAt.In(jp).Format("2006-01-02")
-		dailyStats.detailStats[i].OpenDuration = totalTime
+		dailyStats.detailStats[i].writeDetailStats(issue, startEnd)
 	}
 	return dailyStats, nil
 }
@@ -156,7 +144,7 @@ func (s *dailyStats) GetDailyReportStats() string {
 	sb.WriteString(fmt.Sprintf("総未更新チケット数, %d\n", s.NumNotUpdatedIssues))
 	sb.WriteString(fmt.Sprintf("Team-A 未更新チケット数, %d\n", s.NumTeamAResponse))
 	sb.WriteString(fmt.Sprintf("Team-B 未更新チケット数, %d\n", s.NumTeamBResponse))
-	sb.WriteString(fmt.Sprintf("=== 詳細((チケットリンク/Openからの経過時間)) ===\n"))
+	sb.WriteString(fmt.Sprintf("=== 詳細 ===\n"))
 	for _, issue := range s.detailStats {
 		dates := issue.OpenDuration / 24
 		hours := issue.OpenDuration % 24
@@ -172,8 +160,6 @@ func (s *dailyStats) GetDailyReportStats() string {
 func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlyStats, error) {
 	//
 	span := 4
-	// monthlyStats:= make(map[string]*monthlyStats, span)
-	// monthlyStats := make(map[string]*summaryStats, span)
 	monthlyStats := &monthlyStats{
 		summaryStats: make(map[string]*summaryStats, span),
 		detailStats:  make(map[int]*detailStats, span),
@@ -205,42 +191,32 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 			NumCreatedIssues: numCreated,
 		}
 		for _, issue := range cli {
-			monthlyStats.detailStats[cnt] = &detailStats{}
+			monthlyStats.detailStats[cnt] = &detailStats{
+				TeamAResolve: false,
+			}
 			if labelContains(issue.Labels, "genre:影響調査") {
 				monthlyStats.summaryStats[startEnd].NumGenreImpactSurveyIssues++
-				monthlyStats.detailStats[cnt].Genre = "影響調査"
 			}
 			if labelContains(issue.Labels, "genre:要望") {
 				monthlyStats.summaryStats[startEnd].NumGenreRequestIssues++
-				monthlyStats.detailStats[cnt].Genre = "要望"
 			}
 			if labelContains(issue.Labels, "genre:ログ調査") {
 				monthlyStats.summaryStats[startEnd].NumGenreLogSurveyIssues++
-				monthlyStats.detailStats[cnt].Genre = "ログ調査"
 			}
 			if labelContains(issue.Labels, "genre:仕様調査") {
 				monthlyStats.summaryStats[startEnd].NumGenreSpecSurveyIssues++
-				monthlyStats.detailStats[cnt].Genre = "仕様調査"
 			}
 			if labelContains(issue.Labels, "genre:障害調査") {
 				monthlyStats.summaryStats[startEnd].NumGenreIncidentSurveyIssues++
-				monthlyStats.detailStats[cnt].Genre = "障害調査"
 			}
 			if labelContains(issue.Labels, "TeamA単体解決") {
 				monthlyStats.summaryStats[startEnd].NumTeamAResolveIssues++
-				monthlyStats.detailStats[cnt].TeamAResolve = true
 			}
 			if labelContains(issue.Labels, "緊急度:高") || labelContains(issue.Labels, "緊急度:中") {
 				monthlyStats.summaryStats[startEnd].NumUrgencyHighIssues++
 			}
 			if labelContains(issue.Labels, "緊急度:低") {
 				monthlyStats.summaryStats[startEnd].NumUrgencyLowIssues++
-			}
-			if labelContains(issue.Labels, "Team-A") {
-				monthlyStats.detailStats[cnt].TeamName = "Team-A"
-			}
-			if labelContains(issue.Labels, "Team-B") {
-				monthlyStats.detailStats[cnt].TeamName = "Team-B"
 			}
 
 			var totalTime int
@@ -249,7 +225,6 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 			} else {
 				totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
 			}
-
 			switch {
 			case totalTime <= 2:
 				monthlyStats.summaryStats[startEnd].NumScoreA++
@@ -265,35 +240,7 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 				monthlyStats.summaryStats[startEnd].NumScoreF++
 			}
 
-			monthlyStats.detailStats[cnt].Title = *issue.Title
-			monthlyStats.detailStats[cnt].HTMLURL = *issue.HTMLURL
-			monthlyStats.detailStats[cnt].NumComments = *issue.Comments
-			monthlyStats.detailStats[cnt].CreatedAt = issue.CreatedAt.In(jp).Format("2006-01-02")
-			monthlyStats.detailStats[cnt].ClosedAt = issue.ClosedAt.In(jp).Format("2006-01-02")
-			monthlyStats.detailStats[cnt].TargetSpan = startEnd
-
-			var assigns []string
-			if issue.Assignees != nil {
-				for _, assign := range issue.Assignees {
-					assigns = append(assigns, *assign.Login)
-				}
-			}
-			monthlyStats.detailStats[cnt].Assignee = strings.Join(assigns, ",")
-
-			var labels []string
-			if issue.Labels != nil {
-				for _, label := range issue.Labels {
-					if strings.Contains(*label.Name, "keyword") {
-						labels = append(labels, strings.Replace(*label.Name, "keyword:", "", -1))
-					}
-					if strings.Contains(*label.Name, "緊急度") {
-						monthlyStats.detailStats[cnt].Urgency = strings.Replace(*label.Name, "緊急度:", "", -1)
-					}
-				}
-			}
-			monthlyStats.detailStats[cnt].Labels = strings.Join(labels, ",")
-			monthlyStats.detailStats[cnt].OpenDuration = totalTime
-
+			monthlyStats.detailStats[cnt].writeDetailStats(issue, startEnd)
 			cnt++
 		}
 		monthlyStats.summaryStats[startEnd].NumClosedIssues = len(cli)
@@ -393,9 +340,115 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 	for _, d := range ms.detailStats {
 		dates := d.OpenDuration / 24
 		hours := d.OpenDuration % 24
-		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間:%dd%dh,解決フラグ:%t,span:%s\n", d.Title, d.HTMLURL, d.Urgency, d.Genre, d.TeamName, d.Assignee, d.NumComments, dates, hours, d.TeamAResolve, d.TargetSpan))
+		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間:%dd%dh,解決フラグ:%t,span:	%s\n", d.Title, d.HTMLURL, d.Urgency, d.Genre, d.TeamName, d.Assignee, d.NumComments, dates, hours, d.TeamAResolve, d.TargetSpan))
 	}
 	return sb.String()
+}
+
+func (us *userSupport) GetAnalysisReportStats(since, until time.Time) (*analysisStats, error) {
+	span := 4
+	loc, _ := time.LoadLocation("Asia/Tokyo")
+	since = time.Date(since.Year(), since.Month(), 1, 0, 0, 0, 0, loc)
+
+	analysisStats := &analysisStats{
+		detailStats: make(map[int]*detailStats, span),
+	}
+
+	cnt := 0
+	for i := 1; i <= span; i++ {
+		startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
+		upi, err := us.repo.GetUpdatedSupportIssues(since, until)
+		if err != nil {
+			return nil, fmt.Errorf("get open issues : %s", err)
+		}
+		for _, issue := range upi {
+			analysisStats.detailStats[cnt] = &detailStats{
+				TeamAResolve: false,
+			}
+			analysisStats.detailStats[cnt].writeDetailStats(issue, startEnd)
+			cnt++
+		}
+		since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
+		until = since.AddDate(0, +1, -1)
+	}
+
+	return analysisStats, nil
+}
+
+// GenReport generate analysis report
+func (as *analysisStats) GenAnalysisReport() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("期間,Title,起票日,クローズ日,ステータス,担当チーム,担当アサイン,緊急度,問い合わせ種別,コメント数,経過時間,Keywordラベル,URL\n"))
+	for _, d := range as.detailStats {
+		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s,%s \n", d.TargetSpan, d.Title, d.CreatedAt, d.ClosedAt, d.State, d.TeamName, d.Assignee, d.Urgency, d.Genre, d.NumComments, d.OpenDuration, d.Labels, d.HTMLURL))
+	}
+	return sb.String()
+}
+
+func (us *userSupport) MethodTest(since, until time.Time) (*analysisStats, error) {
+	startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
+	cli, err := us.repo.GetUpdatedSupportIssues(since, until)
+	if err != nil {
+		return nil, fmt.Errorf("get updated issues : %s", err)
+	}
+	analysisStats := &analysisStats{
+		detailStats: make(map[int]*detailStats, len(cli)),
+	}
+	for i, issue := range cli {
+		analysisStats.detailStats[i] = &detailStats{
+			TeamAResolve: false,
+		}
+		analysisStats.detailStats[i].writeDetailStats(issue, startEnd)
+	}
+	return analysisStats, nil
+}
+
+func (ds *detailStats) writeDetailStats(issue *github.Issue, startEnd string) {
+	var labels []string
+	if issue.Labels != nil {
+		for _, label := range issue.Labels {
+			if strings.Contains(*label.Name, "keyword") {
+				labels = append(labels, strings.Replace(*label.Name, "keyword:", "", -1))
+			}
+			if strings.Contains(*label.Name, "緊急度") {
+				ds.Urgency = strings.Replace(*label.Name, "緊急度:", "", -1)
+			}
+			if strings.Contains(*label.Name, "Team-") {
+				ds.TeamName = *label.Name
+			}
+			if strings.Contains(*label.Name, "単体解決") {
+				ds.TeamAResolve = true
+			}
+			if strings.Contains(*label.Name, "genre") {
+				ds.Genre = strings.Replace(*label.Name, "genre:", "", -1)
+			}
+		}
+	}
+	var assigns []string
+	if issue.Assignees != nil {
+		for _, assign := range issue.Assignees {
+			assigns = append(assigns, *assign.Login)
+		}
+	}
+
+	var totalTime int
+	if issue.State != nil && *issue.State == "closed" {
+		totalTime = int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours())
+		ds.ClosedAt = issue.ClosedAt.In(jp).Format("2006-01-02")
+	} else {
+		totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
+	}
+
+	ds.Assignee = strings.Join(assigns, " ")
+	ds.Title = *issue.Title
+	ds.HTMLURL = *issue.HTMLURL
+	ds.NumComments = *issue.Comments
+	ds.State = *issue.State
+	ds.CreatedAt = issue.CreatedAt.In(jp).Format("2006-01-02")
+	ds.OpenDuration = totalTime
+	ds.Assignee = strings.Join(assigns, " ")
+	ds.Labels = strings.Join(labels, " ")
+	ds.TargetSpan = startEnd
 }
 
 //配列の中に特定の文字列が含まれるかを返す
