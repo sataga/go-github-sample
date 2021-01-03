@@ -16,11 +16,11 @@ var (
 
 // UserSupport is interface for getting user support info
 type UserSupport interface {
-	GetDailyReportStats(until time.Time) (*dailyStats, error)
-	GetMonthlyReportStats(since, until time.Time) (*monthlyStats, error)
-	GetAnalysisReportStats(since, until time.Time) (*analysisStats, error)
-	MethodTest(since, until time.Time) (*analysisStats, error)
-	// GenMonthlyReport(data map[string]*monthlyStats) string
+	GetDailyReportStats(until time.Time) (*DailyStats, error)
+	GetMonthlyReportStats(since, until time.Time) (*MonthlyStats, error)
+	GetAnalysisReportStats(since, until time.Time) (*AnalysisStats, error)
+	MethodTest(since, until time.Time) (*AnalysisStats, error)
+	// GenMonthlyReport(data map[string]*MonthlyStats) string
 }
 
 // Repository r/w data which usersupport domain requires
@@ -38,24 +38,24 @@ type userSupport struct {
 	repo Repository
 }
 
-// dailyStats is stats open data from GitHub
-type dailyStats struct {
+// DailyStats is stats open data from GitHub
+type DailyStats struct {
 	NumNotUpdatedIssues int                  `yaml:"num_not_updated_issues"`
 	NumTeamAResponse    int                  `yaml:"num_team_a_response"`
 	NumTeamBResponse    int                  `yaml:"num_team_b_response"`
 	UrgencyHighIssues   int                  `yaml:"num_urgency_high_issues"`
 	UrgencyLowIssues    int                  `yaml:"num_urgency_low_issues"`
-	detailStats         map[int]*detailStats `yaml:"detail_stats"`
+	DetailStats         map[int]*DetailStats `yaml:"detail_stats"`
 }
-type monthlyStats struct {
-	summaryStats map[string]*summaryStats `yaml:"summary_stats"`
-	detailStats  map[int]*detailStats     `yaml:"detail_stats"`
+type MonthlyStats struct {
+	SummaryStats map[string]*SummaryStats `yaml:"summary_stats"`
+	DetailStats  map[int]*DetailStats     `yaml:"detail_stats"`
 }
 
-type analysisStats struct {
-	detailStats map[int]*detailStats `yaml:"detail_stats"`
+type AnalysisStats struct {
+	DetailStats map[int]*DetailStats `yaml:"detail_stats"`
 }
-type summaryStats struct {
+type SummaryStats struct {
 	Span                         string `yajl:"span"`
 	NumCreatedIssues             int    `yaml:"num_created_issues"`
 	NumClosedIssues              int    `yaml:"num_closed_issues"`
@@ -75,7 +75,7 @@ type summaryStats struct {
 	NumScoreF                    int    `yaml:"num_score_F"`
 }
 
-type detailStats struct {
+type DetailStats struct {
 	Title        string `yaml:"detail_stats_of_title"`
 	HTMLURL      string `yaml:"detail_stats_of_issue_url"`
 	CreatedAt    string `yaml:"detail_stats_of_created_at"`
@@ -100,52 +100,51 @@ func NewUserSupport(repo Repository) UserSupport {
 }
 
 // GetDailryReport
-func (us *userSupport) GetDailyReportStats(until time.Time) (*dailyStats, error) {
+func (us *userSupport) GetDailyReportStats(until time.Time) (*DailyStats, error) {
 	startEnd := fmt.Sprintf("%s", until.Format("2006-01-02"))
 	opi, err := us.repo.GetCurrentOpenNotUpdatedSupportIssues(until)
 	if err != nil {
 		return nil, fmt.Errorf("get open issues : %s", err)
 	}
-	dailyStats := &dailyStats{
+	DailyStats := &DailyStats{
 		NumNotUpdatedIssues: len(opi),
-		detailStats:         make(map[int]*detailStats, len(opi)),
+		DetailStats:         make(map[int]*DetailStats, len(opi)),
 	}
 	for i, issue := range opi {
-		dailyStats.detailStats[i] = &detailStats{}
+		DailyStats.DetailStats[i] = &DetailStats{}
 		if labelContains(issue.Labels, "緊急度:高") {
-			dailyStats.UrgencyHighIssues++
-			dailyStats.detailStats[i].Urgency = "高"
+			DailyStats.UrgencyHighIssues++
+			DailyStats.DetailStats[i].Urgency = "高"
 		}
 		if labelContains(issue.Labels, "緊急度:中") {
-			dailyStats.UrgencyHighIssues++
-			dailyStats.detailStats[i].Urgency = "中"
+			DailyStats.UrgencyHighIssues++
+			DailyStats.DetailStats[i].Urgency = "中"
 		}
 		if labelContains(issue.Labels, "緊急度:低") {
-			dailyStats.UrgencyLowIssues++
-			dailyStats.detailStats[i].Urgency = "低"
+			DailyStats.UrgencyLowIssues++
+			DailyStats.DetailStats[i].Urgency = "低"
 		}
 		if labelContains(issue.Labels, "Team-A") {
-			dailyStats.NumTeamAResponse++
-			dailyStats.detailStats[i].TeamName = "Team-A"
+			DailyStats.NumTeamAResponse++
+			DailyStats.DetailStats[i].TeamName = "Team-A"
 		}
 		if labelContains(issue.Labels, "Team-B") {
-			dailyStats.NumTeamBResponse++
-			dailyStats.detailStats[i].TeamName = "Team-B"
+			DailyStats.NumTeamBResponse++
+			DailyStats.DetailStats[i].TeamName = "Team-B"
 		}
-		dailyStats.detailStats[i].writeDetailStats(issue, startEnd)
+		DailyStats.DetailStats[i].writeDetailStats(issue, startEnd)
 	}
-	return dailyStats, nil
+	return DailyStats, nil
 }
 
-// GenReport generate daily report
-func (s *dailyStats) GetDailyReportStats() string {
+func (s *DailyStats) GetDailyReportStats() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("=== サマリー ===\n"))
 	sb.WriteString(fmt.Sprintf("総未更新チケット数, %d\n", s.NumNotUpdatedIssues))
 	sb.WriteString(fmt.Sprintf("Team-A 未更新チケット数, %d\n", s.NumTeamAResponse))
 	sb.WriteString(fmt.Sprintf("Team-B 未更新チケット数, %d\n", s.NumTeamBResponse))
 	sb.WriteString(fmt.Sprintf("=== 詳細 ===\n"))
-	for _, issue := range s.detailStats {
+	for _, issue := range s.DetailStats {
 		dates := issue.OpenDuration / 24
 		hours := issue.OpenDuration % 24
 		sb.WriteString(fmt.Sprintf("- <%s|%s> ", issue.HTMLURL, issue.Title))
@@ -157,12 +156,12 @@ func (s *dailyStats) GetDailyReportStats() string {
 }
 
 // GetMonthlyReport
-func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlyStats, error) {
+func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*MonthlyStats, error) {
 	//
 	span := 4
-	monthlyStats := &monthlyStats{
-		summaryStats: make(map[string]*summaryStats, span),
-		detailStats:  make(map[int]*detailStats, span),
+	MonthlyStats := &MonthlyStats{
+		SummaryStats: make(map[string]*SummaryStats, span),
+		DetailStats:  make(map[int]*DetailStats, span),
 	}
 	cnt := 0
 	for i := 1; i <= span; i++ {
@@ -185,38 +184,38 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 		if err != nil {
 			return nil, fmt.Errorf("get updated issues : %s", err)
 		}
-		monthlyStats.summaryStats[startEnd] = &summaryStats{
+		MonthlyStats.SummaryStats[startEnd] = &SummaryStats{
 			Span:             startEnd,
 			NumClosedIssues:  numClosed,
 			NumCreatedIssues: numCreated,
 		}
 		for _, issue := range cli {
-			monthlyStats.detailStats[cnt] = &detailStats{
+			MonthlyStats.DetailStats[cnt] = &DetailStats{
 				TeamAResolve: false,
 			}
 			if labelContains(issue.Labels, "genre:影響調査") {
-				monthlyStats.summaryStats[startEnd].NumGenreImpactSurveyIssues++
+				MonthlyStats.SummaryStats[startEnd].NumGenreImpactSurveyIssues++
 			}
 			if labelContains(issue.Labels, "genre:要望") {
-				monthlyStats.summaryStats[startEnd].NumGenreRequestIssues++
+				MonthlyStats.SummaryStats[startEnd].NumGenreRequestIssues++
 			}
 			if labelContains(issue.Labels, "genre:ログ調査") {
-				monthlyStats.summaryStats[startEnd].NumGenreLogSurveyIssues++
+				MonthlyStats.SummaryStats[startEnd].NumGenreLogSurveyIssues++
 			}
 			if labelContains(issue.Labels, "genre:仕様調査") {
-				monthlyStats.summaryStats[startEnd].NumGenreSpecSurveyIssues++
+				MonthlyStats.SummaryStats[startEnd].NumGenreSpecSurveyIssues++
 			}
 			if labelContains(issue.Labels, "genre:障害調査") {
-				monthlyStats.summaryStats[startEnd].NumGenreIncidentSurveyIssues++
+				MonthlyStats.SummaryStats[startEnd].NumGenreIncidentSurveyIssues++
 			}
 			if labelContains(issue.Labels, "TeamA単体解決") {
-				monthlyStats.summaryStats[startEnd].NumTeamAResolveIssues++
+				MonthlyStats.SummaryStats[startEnd].NumTeamAResolveIssues++
 			}
 			if labelContains(issue.Labels, "緊急度:高") || labelContains(issue.Labels, "緊急度:中") {
-				monthlyStats.summaryStats[startEnd].NumUrgencyHighIssues++
+				MonthlyStats.SummaryStats[startEnd].NumUrgencyHighIssues++
 			}
 			if labelContains(issue.Labels, "緊急度:低") {
-				monthlyStats.summaryStats[startEnd].NumUrgencyLowIssues++
+				MonthlyStats.SummaryStats[startEnd].NumUrgencyLowIssues++
 			}
 
 			var totalTime int
@@ -227,32 +226,31 @@ func (us *userSupport) GetMonthlyReportStats(since, until time.Time) (*monthlySt
 			}
 			switch {
 			case totalTime <= 2:
-				monthlyStats.summaryStats[startEnd].NumScoreA++
+				MonthlyStats.SummaryStats[startEnd].NumScoreA++
 			case totalTime <= 5:
-				monthlyStats.summaryStats[startEnd].NumScoreB++
+				MonthlyStats.SummaryStats[startEnd].NumScoreB++
 			case totalTime <= 10:
-				monthlyStats.summaryStats[startEnd].NumScoreC++
+				MonthlyStats.SummaryStats[startEnd].NumScoreC++
 			case totalTime <= 20:
-				monthlyStats.summaryStats[startEnd].NumScoreD++
+				MonthlyStats.SummaryStats[startEnd].NumScoreD++
 			case totalTime <= 30:
-				monthlyStats.summaryStats[startEnd].NumScoreE++
+				MonthlyStats.SummaryStats[startEnd].NumScoreE++
 			default:
-				monthlyStats.summaryStats[startEnd].NumScoreF++
+				MonthlyStats.SummaryStats[startEnd].NumScoreF++
 			}
 
-			monthlyStats.detailStats[cnt].writeDetailStats(issue, startEnd)
+			MonthlyStats.DetailStats[cnt].writeDetailStats(issue, startEnd)
 			cnt++
 		}
-		monthlyStats.summaryStats[startEnd].NumClosedIssues = len(cli)
+		MonthlyStats.SummaryStats[startEnd].NumClosedIssues = len(cli)
 		since = since.AddDate(0, 0, -7)
 		until = until.AddDate(0, 0, -7)
 
 	}
-	return monthlyStats, nil
+	return MonthlyStats, nil
 }
 
-// GenReport generate monthly report
-func (ms *monthlyStats) GenMonthlyReport() string {
+func (ms *MonthlyStats) GenMonthlyReport() string {
 	var sb strings.Builder
 	var Span []string
 	var NumCreatedIssues []string
@@ -273,10 +271,10 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 
 	type kv struct {
 		Key string
-		Val *summaryStats
+		Val *SummaryStats
 	}
 	var kvArr []kv
-	for k, v := range ms.summaryStats {
+	for k, v := range ms.SummaryStats {
 		kvArr = append(kvArr, kv{k, v})
 	}
 	// sort by Span
@@ -337,7 +335,7 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 	sb.WriteString(fmt.Sprintf("\n"))
 
 	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
-	for _, d := range ms.detailStats {
+	for _, d := range ms.DetailStats {
 		dates := d.OpenDuration / 24
 		hours := d.OpenDuration % 24
 		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間:%dd%dh,解決フラグ:%t,span:	%s\n", d.Title, d.HTMLURL, d.Urgency, d.Genre, d.TeamName, d.Assignee, d.NumComments, dates, hours, d.TeamAResolve, d.TargetSpan))
@@ -345,13 +343,13 @@ func (ms *monthlyStats) GenMonthlyReport() string {
 	return sb.String()
 }
 
-func (us *userSupport) GetAnalysisReportStats(since, until time.Time) (*analysisStats, error) {
+func (us *userSupport) GetAnalysisReportStats(since, until time.Time) (*AnalysisStats, error) {
 	span := 4
 	loc, _ := time.LoadLocation("Asia/Tokyo")
 	since = time.Date(since.Year(), since.Month(), 1, 0, 0, 0, 0, loc)
 
-	analysisStats := &analysisStats{
-		detailStats: make(map[int]*detailStats, span),
+	AnalysisStats := &AnalysisStats{
+		DetailStats: make(map[int]*DetailStats, span),
 	}
 
 	cnt := 0
@@ -362,48 +360,48 @@ func (us *userSupport) GetAnalysisReportStats(since, until time.Time) (*analysis
 			return nil, fmt.Errorf("get open issues : %s", err)
 		}
 		for _, issue := range upi {
-			analysisStats.detailStats[cnt] = &detailStats{
+			AnalysisStats.DetailStats[cnt] = &DetailStats{
 				TeamAResolve: false,
 			}
-			analysisStats.detailStats[cnt].writeDetailStats(issue, startEnd)
+			AnalysisStats.DetailStats[cnt].writeDetailStats(issue, startEnd)
 			cnt++
 		}
 		since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
 		until = since.AddDate(0, +1, -1)
 	}
 
-	return analysisStats, nil
+	return AnalysisStats, nil
 }
 
 // GenReport generate analysis report
-func (as *analysisStats) GenAnalysisReport() string {
+func (as *AnalysisStats) GenAnalysisReport() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("期間,Title,起票日,クローズ日,ステータス,担当チーム,担当アサイン,緊急度,問い合わせ種別,コメント数,経過時間,Keywordラベル,URL\n"))
-	for _, d := range as.detailStats {
+	for _, d := range as.DetailStats {
 		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s,%s \n", d.TargetSpan, d.Title, d.CreatedAt, d.ClosedAt, d.State, d.TeamName, d.Assignee, d.Urgency, d.Genre, d.NumComments, d.OpenDuration, d.Labels, d.HTMLURL))
 	}
 	return sb.String()
 }
 
-func (us *userSupport) MethodTest(since, until time.Time) (*analysisStats, error) {
+func (us *userSupport) MethodTest(since, until time.Time) (*AnalysisStats, error) {
 	startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
 	cli, err := us.repo.GetUpdatedSupportIssues(since, until)
 	if err != nil {
 		return nil, fmt.Errorf("get updated issues : %s", err)
 	}
-	analysisStats := &analysisStats{
-		detailStats: make(map[int]*detailStats, len(cli)),
+	AnalysisStats := &AnalysisStats{
+		DetailStats: make(map[int]*DetailStats, len(cli)),
 	}
 	for i, issue := range cli {
-		analysisStats.detailStats[i] = &detailStats{
+		AnalysisStats.DetailStats[i] = &DetailStats{
 			TeamAResolve: false,
 		}
-		analysisStats.detailStats[i].writeDetailStats(issue, startEnd)
+		AnalysisStats.DetailStats[i].writeDetailStats(issue, startEnd)
 	}
-	return analysisStats, nil
+	return AnalysisStats, nil
 }
 
-func (ds *detailStats) writeDetailStats(issue *github.Issue, startEnd string) {
+func (ds *DetailStats) writeDetailStats(issue *github.Issue, startEnd string) {
 	var labels []string
 	if issue.Labels != nil {
 		for _, label := range issue.Labels {
