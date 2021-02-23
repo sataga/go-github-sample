@@ -21,7 +21,7 @@ func NewUserSupportRepository(ghClient igh.Client) dus.Repository {
 }
 
 func (r *userSupportRepository) GetUpdatedSupportIssues(since, until time.Time) ([]*github.Issue, error) {
-	issues, err := r.ghClient.ListRepoIssuesSince("sataga", "issue-warehouse", since, "all", []string{"support"})
+	issues, err := r.ghClient.ListRepoIssuesSince("sataga", "issue-warehouse", since, "all", []string{"PF_Support"})
 	if err != nil {
 		return nil, fmt.Errorf("list repo issues: %s", err)
 	}
@@ -35,7 +35,7 @@ func (r *userSupportRepository) GetUpdatedSupportIssues(since, until time.Time) 
 }
 
 func (r *userSupportRepository) GetClosedSupportIssues(since, until time.Time) ([]*github.Issue, error) {
-	issues, err := r.ghClient.ListRepoIssuesSince("sataga", "issue-warehouse", since, "closed", []string{"support"})
+	issues, err := r.ghClient.ListRepoIssuesSince("sataga", "issue-warehouse", since, "closed", []string{"PF_Support"})
 	if err != nil {
 		return nil, fmt.Errorf("list repo issues: %s", err)
 	}
@@ -49,7 +49,7 @@ func (r *userSupportRepository) GetClosedSupportIssues(since, until time.Time) (
 }
 
 func (r *userSupportRepository) GetCurrentOpenNotUpdatedSupportIssues(until time.Time) ([]*github.Issue, error) {
-	issues, err := r.ghClient.ListRepoIssues("sataga", "issue-warehouse", "open", []string{"support"})
+	issues, err := r.ghClient.ListRepoIssues("sataga", "issue-warehouse", "open", []string{"PF_Support"})
 	if err != nil {
 		return nil, fmt.Errorf("list repo issues: %s", err)
 	}
@@ -63,18 +63,31 @@ func (r *userSupportRepository) GetCurrentOpenNotUpdatedSupportIssues(until time
 }
 
 func (r *userSupportRepository) GetCurrentOpenSupportIssues() ([]*github.Issue, error) {
-	return r.ghClient.ListRepoIssues("sataga", "issue-warehouse", "open", []string{"support"})
+	return r.ghClient.ListRepoIssues("sataga", "issue-warehouse", "open", []string{"PF_Support"})
 }
 
-func (r *userSupportRepository) GetCurrentOpenAnyLabelsSupportIssues(state string, labels []string) ([]*github.Issue, error) {
-	labels = append(labels, "support")
-	return r.ghClient.ListRepoIssues("sataga", "issue-warehouse", state, labels)
+func (r *userSupportRepository) GetCreatedSupportIssues(since, until time.Time) ([]*github.Issue, error) {
+	query := fmt.Sprintf("repo:sataga/issue-warehouse is:issue created:%s..%s label:PF_Support", since.Format("2006-01-02"), until.Format("2006-01-02"))
+	result, _ := r.ghClient.SearchIssuesByQuery(query)
+	iss := make([]*github.Issue, 0, len(result))
+	for _, is := range result {
+		iss = append(iss, &github.Issue{
+			Title:     is.Title,
+			CreatedAt: is.CreatedAt,
+			UpdatedAt: is.UpdatedAt,
+			ClosedAt:  is.ClosedAt,
+			State:     is.State,
+			Assignees: is.Assignees,
+			Labels:    is.Labels,
+			HTMLURL:   is.HTMLURL,
+			Body:      is.Body,
+			Comments:  is.Comments,
+		})
+	}
+	return iss, nil
 }
 
-func (r *userSupportRepository) GetCurrentRepoLabels() ([]*github.Label, error) {
-	return r.ghClient.ListRepoLabels("sataga", "issue-warehouse")
-}
-
-func (r *userSupportRepository) GetLabelsByQuery(repoID int64, query string) (*github.LabelsSearchResult, *github.Response, error) {
-	return r.ghClient.SearchRepoLabels(repoID, query)
+func (r *userSupportRepository) GetLabelsByQuery(query string) ([]*github.LabelResult, error) {
+	repoID, _ := r.ghClient.GetRepoID("sataga", "issue-warehouse")
+	return r.ghClient.SearchLabelsByQuery(repoID, query)
 }
