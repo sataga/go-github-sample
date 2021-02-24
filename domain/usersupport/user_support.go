@@ -23,6 +23,7 @@ type UserSupport interface {
 	GetAnalysisReportStats(since, until time.Time, state string, span int) (*AnalysisStats, error)
 	GetKeywordReportStats(until time.Time, kind string, span int) (*KeywordStats, error)
 	MethodTest(since, until time.Time) (*AnalysisStats, error)
+	GetProjectBoard() string
 	// GenMonthlyReport(data map[string]*LongTermStats) string
 }
 
@@ -34,6 +35,7 @@ type Repository interface {
 	GetCurrentOpenSupportIssues() ([]*github.Issue, error)
 	GetCreatedSupportIssues(since, until time.Time) ([]*github.Issue, error)
 	GetLabelsByQuery(query string) ([]*github.LabelResult, error)
+	GetProjectData() string
 }
 
 type userSupport struct {
@@ -660,6 +662,12 @@ func (us *userSupport) MethodTest(since, until time.Time) (*AnalysisStats, error
 		AnalysisStats.DetailStats[i].writeDetailStats(issue, startEnd)
 	}
 	return AnalysisStats, nil
+}
+
+func (us *userSupport) GetProjectBoard() string {
+	tmp := us.repo.GetProjectData()
+	fmt.Println(tmp)
+	return "hoge"
 }
 
 func (ds *DetailStats) writeDetailStats(issue *github.Issue, startEnd string) {

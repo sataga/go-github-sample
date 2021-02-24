@@ -26,6 +26,7 @@ type Client interface {
 	GetRepoID(owner, repo string) (int64, error)
 	SearchLabelsByQuery(repoID int64, query string) ([]*github.LabelResult, error)
 	SearchIssuesByQuery(query string) ([]github.Issue, error)
+	GetProjectCard() string
 }
 
 type ghclient struct {
@@ -244,4 +245,12 @@ func (c *ghclient) SearchIssuesByQuery(query string) ([]github.Issue, error) {
 			},
 		})
 	})
+}
+
+func (c *ghclient) GetProjectCard() string {
+	// header := map[string]string{"Accept": "application/vnd.github.inertia-preview+json"}
+	// c.ctx = context.WithValue(c.ctx, "headers", header)
+	tmp, _, _ := c.client.Projects.GetProject(c.ctx, 11824833)
+	fmt.Println(tmp)
+	return "hoge"
 }

@@ -91,3 +91,8 @@ func (r *userSupportRepository) GetLabelsByQuery(query string) ([]*github.LabelR
 	repoID, _ := r.ghClient.GetRepoID("sataga", "issue-warehouse")
 	return r.ghClient.SearchLabelsByQuery(repoID, query)
 }
+
+func (r *userSupportRepository) GetProjectData() string {
+	tmp := r.ghClient.GetProjectCard()
+	return tmp
+}
