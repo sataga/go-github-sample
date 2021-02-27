@@ -1,3 +1,6 @@
+// Package usersupport is a domain logic for user support
+//go:generate mockgen -source=$GOFILE -destination=mock_$GOFILE -package=$GOPACKAGE
+
 package usersupport
 
 import (

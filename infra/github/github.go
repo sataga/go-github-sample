@@ -1,3 +1,6 @@
+// Package github is a responsible for github specific impl
+//go:generate mockgen -source=$GOFILE -destination=mock_$GOFILE -package=$GOPACKAGE
+
 package github
 
 import (
