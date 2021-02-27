@@ -140,11 +140,11 @@ func (us *userSupport) GetDailyReportStats(now time.Time, dayAgo int) (*DailySta
 			DailyStats.UrgencyHighIssues++
 			DailyStats.DetailStats[i].Urgency = "高"
 		}
-		if labelContains(issue.Labels, "緊急度:中") {
+		if labelContains(issue.Labels, "緊急度：中") {
 			DailyStats.UrgencyHighIssues++
 			DailyStats.DetailStats[i].Urgency = "中"
 		}
-		if labelContains(issue.Labels, "緊急度:低") {
+		if labelContains(issue.Labels, "緊急度：低") {
 			DailyStats.UrgencyLowIssues++
 			DailyStats.DetailStats[i].Urgency = "低"
 		}
@@ -178,15 +178,15 @@ func (ds *DailyStats) GetDailyReportStats() string {
 	sb.WriteString(fmt.Sprintf("■ *%d日間* 以上更新がなかったチケット一覧\n", ds.dayAgo))
 	sb.WriteString(fmt.Sprintf("=== サマリー ===\n"))
 	sb.WriteString(fmt.Sprintf("総未更新チケット数: %d 件\n", ds.NumNotUpdatedIssues))
-	sb.WriteString(fmt.Sprintf("    緊急度:高・中: %d 件\n", ds.NumTeamAResponse))
-	sb.WriteString(fmt.Sprintf("    緊急度:低: %d 件\n", ds.NumTeamBResponse))
+	sb.WriteString(fmt.Sprintf("    緊急度：高・中: %d 件\n", ds.NumTeamAResponse))
+	sb.WriteString(fmt.Sprintf("    緊急度：低: %d 件\n", ds.NumTeamBResponse))
 	sb.WriteString(fmt.Sprintf("=== 詳細 ===\n"))
 	for _, d := range kvArrForDetail {
 		dates := d.Val.OpenDuration / 24
 		hours := d.Val.OpenDuration % 24
 		sb.WriteString(fmt.Sprintf("- <%s|%s> ", d.Val.HTMLURL, d.Val.Title))
 		sb.WriteString(fmt.Sprintf("経過時間:%dd%dh ", dates, hours))
-		sb.WriteString(fmt.Sprintf("緊急度:%s ", d.Val.Urgency))
+		sb.WriteString(fmt.Sprintf("緊急度：%s ", d.Val.Urgency))
 		sb.WriteString(fmt.Sprintf("%s\n", d.Val.Assignee))
 	}
 	return sb.String()
@@ -260,10 +260,10 @@ func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span
 					LongTermStats.SummaryStats[startEnd].NumEscalationFailureIssues++
 				}
 			}
-			if labelContains(issue.Labels, "緊急度：高") || labelContains(issue.Labels, "緊急度:中") {
+			if labelContains(issue.Labels, "緊急度：高") || labelContains(issue.Labels, "緊急度：中") {
 				LongTermStats.SummaryStats[startEnd].NumUrgencyHighIssues++
 			}
-			if labelContains(issue.Labels, "緊急度:低") {
+			if labelContains(issue.Labels, "緊急度：低") {
 				LongTermStats.SummaryStats[startEnd].NumUrgencyLowIssues++
 			}
 
@@ -410,8 +410,8 @@ func (lts *LongTermStats) GenLongTermReport() string {
 	sb.WriteString(fmt.Sprintf("\n"))
 	sb.WriteString(fmt.Sprintf("|起票件数|%s|\n", strings.Join(NumCreatedIssues, "|")))
 	sb.WriteString(fmt.Sprintf("|クローズ件数|%s|\n", strings.Join(NumClosedIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|緊急度:高・中|%s|\n", strings.Join(NumUrgencyHighIssues, "|")))
-	sb.WriteString(fmt.Sprintf("|緊急度:低|%s|\n", strings.Join(NumUrgencyLowIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|緊急度：高・中|%s|\n", strings.Join(NumUrgencyHighIssues, "|")))
+	sb.WriteString(fmt.Sprintf("|緊急度：低|%s|\n", strings.Join(NumUrgencyLowIssues, "|")))
 	sb.WriteString(fmt.Sprintf("|全体エスカレーション件数|%s|\n", strings.Join(NumEscalationAllIssues, "|")))
 	sb.WriteString(fmt.Sprintf("|全体CaaS-A完結率(％)|%s|\n", strings.Join(NumTeamAResolveAllPercentage, "|")))
 	sb.WriteString(fmt.Sprintf("|通常エスカレーション件数|%s|\n", strings.Join(NumEscalationNormalIssues, "|")))
@@ -673,7 +673,7 @@ func (ds *DetailStats) writeDetailStats(issue *github.Issue, startEnd string) {
 				labels = append(labels, strings.Replace(*label.Name, "keyword:", "", -1))
 			}
 			if strings.Contains(*label.Name, "緊急度") {
-				ds.Urgency = strings.Replace(*label.Name, "緊急度:", "", -1)
+				ds.Urgency = strings.Replace(*label.Name, "緊急度：", "", -1)
 			}
 			if strings.Contains(*label.Name, "CaaS-") {
 				ds.TeamName = strings.Replace(*label.Name, " 対応中", "", -1)
