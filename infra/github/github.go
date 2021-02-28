@@ -26,6 +26,8 @@ type Client interface {
 	PullRequest(owner, repo, title, head, body, baseBranch string) (string, error)
 	ListRepoIssuesSince(owner, repo string, since time.Time, state string, labels []string) ([]*github.Issue, error)
 	ListRepoIssues(owner, repo string, state string, labels []string) ([]*github.Issue, error)
+	ListComments(owner, repo string, number int) ([]*github.IssueComment, *github.Response, error)
+	ListIssueEvent(owner, repo string, number int) ([]*github.IssueEvent, *github.Response, error)
 	GetRepoID(owner, repo string) (int64, error)
 	SearchLabelsByQuery(repoID int64, query string) ([]*github.LabelResult, error)
 	SearchIssuesByQuery(query string) ([]github.Issue, error)
@@ -175,6 +177,24 @@ func (c *ghclient) ListRepoIssues(owner, repo string, state string, labels []str
 				PerPage: 30,
 			},
 		})
+	})
+}
+
+// func (c *ghclient) ListComments(owner, repo string, number int) ([]*github.IssueComment, error) {
+func (c *ghclient) ListComments(owner, repo string, number int) ([]*github.IssueComment, *github.Response, error) {
+	return c.client.Issues.ListComments(c.ctx, owner, repo, number, &github.IssueListCommentsOptions{
+		ListOptions: github.ListOptions{
+			Page:    1,
+			PerPage: 30,
+		},
+	})
+
+}
+
+func (c *ghclient) ListIssueEvent(owner, repo string, number int) ([]*github.IssueEvent, *github.Response, error) {
+	return c.client.Issues.ListIssueEvents(c.ctx, owner, repo, number, &github.ListOptions{
+		Page:    1,
+		PerPage: 30,
 	})
 }
 

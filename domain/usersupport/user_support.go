@@ -37,6 +37,8 @@ type Repository interface {
 	GetCurrentOpenSupportIssues() ([]*github.Issue, error)
 	GetCreatedSupportIssues(since, until time.Time) ([]*github.Issue, error)
 	GetLabelsByQuery(query string) ([]*github.LabelResult, error)
+	GetComments(number int) []*github.IssueComment
+	GetEvents(number int) []*github.IssueEvent
 }
 
 type userSupport struct {
@@ -289,6 +291,20 @@ func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span
 			}
 
 			LongTermStats.DetailStats[cnt].writeDetailStats(issue, startEnd)
+			comments := us.repo.GetComments(*issue.Number)
+			fmt.Printf("title:%s\n", *issue.Title)
+			for _, comment := range comments {
+				fmt.Println(*comment.Body)
+			}
+			events := us.repo.GetEvents(*issue.Number)
+			for i, event := range events {
+				fmt.Println(i)
+				fmt.Println(*event.Event)
+				if *event.Event == "moved_columns_in_project" {
+					fmt.Println(i)
+				}
+			}
+
 			cnt++
 		}
 		LongTermStats.SummaryStats[startEnd].NumClosedIssues = len(cli)
@@ -298,7 +314,6 @@ func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span
 			tmpTotal := (LongTermStats.SummaryStats[startEnd].NumScoreA * 1) + (LongTermStats.SummaryStats[startEnd].NumScoreB * 2) + (LongTermStats.SummaryStats[startEnd].NumScoreC * 3) + (LongTermStats.SummaryStats[startEnd].NumScoreD * 4) + (LongTermStats.SummaryStats[startEnd].NumScoreE * 5) + (LongTermStats.SummaryStats[startEnd].NumScoreF * 6)
 			LongTermStats.SummaryStats[startEnd].NumTotalScore = float64(tmpTotal) / float64(LongTermStats.SummaryStats[startEnd].NumClosedIssues)
 		}
-
 		switch kind {
 		case "weekly-report":
 			since = since.AddDate(0, 0, -7)

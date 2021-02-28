@@ -91,3 +91,13 @@ func (r *userSupportRepository) GetLabelsByQuery(query string) ([]*github.LabelR
 	repoID, _ := r.ghClient.GetRepoID("sataga", "issue-warehouse")
 	return r.ghClient.SearchLabelsByQuery(repoID, query)
 }
+
+func (r *userSupportRepository) GetComments(number int) []*github.IssueComment {
+	comments, _, _ := r.ghClient.ListComments("sataga", "issue-warehouse", number)
+	return comments
+}
+
+func (r *userSupportRepository) GetEvents(number int) []*github.IssueEvent {
+	events, _, _ := r.ghClient.ListIssueEvent("sataga", "issue-warehouse", number)
+	return events
+}
