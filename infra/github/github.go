@@ -26,6 +26,7 @@ type Client interface {
 	PullRequest(owner, repo, title, head, body, baseBranch string) (string, error)
 	ListRepoIssuesSince(owner, repo string, since time.Time, state string, labels []string) ([]*github.Issue, error)
 	ListRepoIssues(owner, repo string, state string, labels []string) ([]*github.Issue, error)
+	ListIssueComments(owner, repo string, number int) ([]*github.IssueComment, error)
 	GetRepoID(owner, repo string) (int64, error)
 	SearchLabelsByQuery(repoID int64, query string) ([]*github.LabelResult, error)
 	SearchIssuesByQuery(query string) ([]github.Issue, error)
@@ -241,6 +242,39 @@ func searchIssuesByQuery(listFunc func(pageIdx int) (*github.IssuesSearchResult,
 func (c *ghclient) SearchIssuesByQuery(query string) ([]github.Issue, error) {
 	return searchIssuesByQuery(func(pageIdx int) (*github.IssuesSearchResult, *github.Response, error) {
 		return c.client.Search.Issues(c.ctx, query, &github.SearchOptions{
+			ListOptions: github.ListOptions{
+				Page:    pageIdx,
+				PerPage: 30,
+			},
+		})
+	})
+}
+
+func listIssueComments(listFunc func(pageIdx int) ([]*github.IssueComment, *github.Response, error)) ([]*github.IssueComment, error) {
+	maxTry := 20 // limit requests for safety
+	pageIdx := 1
+	comments := make([]*github.IssueComment, 0)
+	for ; maxTry > 0; maxTry-- {
+		ics, resp, err := listFunc(pageIdx)
+		if err != nil {
+			return nil, fmt.Errorf("list comments from repo: %s, pageIdx %d, lastPageIdx %d", err, pageIdx, resp.LastPage)
+		}
+		comments = append(comments, ics...)
+		// last page index is 0 when no more pagination
+		if resp.LastPage == 0 {
+			break
+		}
+		pageIdx = resp.NextPage
+	}
+	if maxTry == 0 {
+		return comments, fmt.Errorf("list comments reached to max try: %d", maxTry)
+	}
+	return comments, nil
+}
+
+func (c *ghclient) ListIssueComments(owner, repo string, number int) ([]*github.IssueComment, error) {
+	return listIssueComments(func(pageIdx int) ([]*github.IssueComment, *github.Response, error) {
+		return c.client.Issues.ListComments(c.ctx, owner, repo, number, &github.IssueListCommentsOptions{
 			ListOptions: github.ListOptions{
 				Page:    pageIdx,
 				PerPage: 30,

@@ -37,6 +37,7 @@ type Repository interface {
 	GetCurrentOpenSupportIssues() ([]*github.Issue, error)
 	GetCreatedSupportIssues(since, until time.Time) ([]*github.Issue, error)
 	GetLabelsByQuery(query string) ([]*github.LabelResult, error)
+	GetIssueComments(number int) ([]*github.IssueComment, error)
 }
 
 type userSupport struct {
@@ -286,6 +287,15 @@ func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span
 				LongTermStats.SummaryStats[startEnd].NumScoreE++
 			default:
 				LongTermStats.SummaryStats[startEnd].NumScoreF++
+			}
+
+			comments, err := us.repo.GetIssueComments(*issue.Number)
+			if err != nil {
+				return nil, fmt.Errorf("get issue comments : %s", err)
+			}
+			fmt.Printf("title:%s\n", *issue.Title)
+			for _, comment := range comments {
+				fmt.Println(*comment.Body)
 			}
 
 			LongTermStats.DetailStats[cnt].writeDetailStats(issue, startEnd)

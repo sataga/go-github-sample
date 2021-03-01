@@ -91,3 +91,7 @@ func (r *userSupportRepository) GetLabelsByQuery(query string) ([]*github.LabelR
 	repoID, _ := r.ghClient.GetRepoID("sataga", "issue-warehouse")
 	return r.ghClient.SearchLabelsByQuery(repoID, query)
 }
+
+func (r *userSupportRepository) GetIssueComments(number int) ([]*github.IssueComment, error) {
+	return r.ghClient.ListIssueComments("sataga", "issue-warehouse", number)
+}
