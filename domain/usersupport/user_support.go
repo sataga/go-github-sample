@@ -112,6 +112,9 @@ type DetailStats struct {
 	Assignee     string `yaml:"detail_stats_of_assign"`
 	NumComments  int    `yaml:"detail_stats_of_num_comment"`
 	OpenDuration int    `yaml:"detail_stats_of_open_duration"`
+	StartTime    int    `yaml:"detail_stats_of_start_time"`
+	WorkingTime  int    `yaml:"detail_stats_of_working_time"`
+	WaitingTime  int    `yaml:"detail_stats_of_waiting_time"`
 	Escalation   bool   `yaml:"detail_stats_of_esalation"`
 }
 
@@ -289,16 +292,29 @@ func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span
 				LongTermStats.SummaryStats[startEnd].NumScoreF++
 			}
 
+			LongTermStats.DetailStats[cnt].writeDetailStats(issue, startEnd)
 			comments, err := us.repo.GetIssueComments(*issue.Number)
 			if err != nil {
 				return nil, fmt.Errorf("get issue comments : %s", err)
 			}
-			fmt.Printf("title:%s\n", *issue.Title)
-			for _, comment := range comments {
-				fmt.Println(*comment.Body)
+			var tmpCalculationTime time.Time
+			fmt.Printf("title:%s open:%s close:%s\n", *issue.Title, *issue.CreatedAt, *issue.ClosedAt)
+			for i, comment := range comments {
+				fmt.Printf("i=%d: created:%s body:%s\n", i, *comment.CreatedAt, *comment.Body)
+				if strings.HasPrefix(*comment.Body, "to user") {
+					if LongTermStats.DetailStats[cnt].StartTime == 0 {
+						LongTermStats.DetailStats[cnt].StartTime = int(comment.CreatedAt.Sub(*issue.CreatedAt).Hours())
+					} else {
+						LongTermStats.DetailStats[cnt].WorkingTime = LongTermStats.DetailStats[cnt].WorkingTime + int(comment.CreatedAt.Sub(tmpCalculationTime).Hours())
+					}
+					tmpCalculationTime = *comment.CreatedAt
+				}
+				if strings.HasPrefix(*comment.Body, "from user") {
+					LongTermStats.DetailStats[cnt].WaitingTime = LongTermStats.DetailStats[cnt].WaitingTime + int(comment.CreatedAt.Sub(tmpCalculationTime).Hours())
+					tmpCalculationTime = *comment.CreatedAt
+				}
 			}
 
-			LongTermStats.DetailStats[cnt].writeDetailStats(issue, startEnd)
 			cnt++
 		}
 		LongTermStats.SummaryStats[startEnd].NumClosedIssues = len(cli)
