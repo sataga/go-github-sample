@@ -367,7 +367,7 @@ func (lts *LongTermStats) GenLongTermReport() string {
 		NumClosedIssues = append(NumClosedIssues, strconv.Itoa(d.Val.NumClosedIssues))
 		NumGenreRequestIssues = append(NumGenreRequestIssues, strconv.Itoa(d.Val.NumGenreRequestIssues))
 		NumGenreNormalIssues = append(NumGenreNormalIssues, strconv.Itoa(d.Val.NumGenreNormalIssues))
-		NumGenreFailureIssues = append(NumGenreFailureIssues, strconv.Itoa(d.Val.NumGenreNormalIssues))
+		NumGenreFailureIssues = append(NumGenreFailureIssues, strconv.Itoa(d.Val.NumGenreFailureIssues))
 		NumUrgencyHighIssues = append(NumUrgencyHighIssues, strconv.Itoa(d.Val.NumUrgencyHighIssues))
 		NumUrgencyLowIssues = append(NumUrgencyLowIssues, strconv.Itoa(d.Val.NumUrgencyLowIssues))
 		NumEscalationAllIssues = append(NumEscalationAllIssues, strconv.Itoa(d.Val.NumEscalationAllIssues))
