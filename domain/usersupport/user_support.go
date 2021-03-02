@@ -196,9 +196,9 @@ func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span
 	var since time.Time
 	loc, _ := time.LoadLocation("Asia/Tokyo")
 	switch kind {
-	case "weekly-report":
+	case "weekly":
 		since = until.AddDate(0, 0, -7)
-	case "monthly-report":
+	case "monthly":
 		since = time.Date(until.Year(), until.Month(), 1, 0, 0, 0, 0, loc)
 		until = since.AddDate(0, +1, -1)
 	}
@@ -214,16 +214,6 @@ func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span
 		if err != nil {
 			return nil, fmt.Errorf("get open issues : %s", err)
 		}
-		upi, err := us.repo.GetUpdatedSupportIssues(since, until)
-		if err != nil {
-			return nil, fmt.Errorf("get open issues : %s", err)
-		}
-		numClosed := 0
-		for _, issue := range upi {
-			if issue.State != nil && *issue.State == "closed" {
-				numClosed++
-			}
-		}
 
 		cli, err := us.repo.GetClosedSupportIssues(since, until)
 		if err != nil {
@@ -232,7 +222,6 @@ func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span
 
 		LongTermStats.SummaryStats[startEnd] = &SummaryStats{
 			Span:             startEnd,
-			NumClosedIssues:  numClosed,
 			NumCreatedIssues: len(cri),
 		}
 		for _, issue := range cli {
@@ -300,10 +289,10 @@ func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span
 		}
 
 		switch kind {
-		case "weekly-report":
+		case "weekly":
 			since = since.AddDate(0, 0, -7)
 			until = until.AddDate(0, 0, -7)
-		case "monthly-report":
+		case "monthly":
 			since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
 			until = since.AddDate(0, +1, -1)
 		}

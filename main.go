@@ -28,6 +28,11 @@ var (
 	dailyReportFlag = flag.NewFlagSet("daily-report", flag.ExitOnError)
 	dayAgoInt       = dailyReportFlag.Int("day-ago", 7, "Please specify a date that has not been updated")
 
+	longtermReportFlag = flag.NewFlagSet("longterm-report", flag.ExitOnError)
+	longtermKindStr    = longtermReportFlag.String("kind", "monthly", "Please choose on (weekly , monthly)")
+	longtermSpanInt    = longtermReportFlag.Int("span", 4, "Please enter the span you want to get")
+	longtermOriginStr  = longtermReportFlag.String("origin", now.Format("2006-01-02"), "Get the data based on the date you entered")
+
 	analysisReportFlag = flag.NewFlagSet("analysys-report", flag.ExitOnError)
 	stateStr           = analysisReportFlag.String("state", "created", "Please choose on (created , closed)")
 	spanInt            = analysisReportFlag.Int("span", 4, "Please enter the span you want to get")
@@ -45,6 +50,8 @@ func printDefaultsAll() {
 	fmt.Println("us:    getting user support info")
 	userSupportFlag.PrintDefaults()
 	fmt.Println("daily-report:    Notify slack of tickets that have not been updated since the specified date")
+	dailyReportFlag.PrintDefaults()
+	fmt.Println("longterm-report:    Output user information in Markdown format based on kind")
 	dailyReportFlag.PrintDefaults()
 	fmt.Println("analysis-report:    Output user information in CSV format")
 	analysisReportFlag.PrintDefaults()
@@ -86,21 +93,20 @@ func main() {
 		// if err != nil {
 		// 	log.Fatalf("slack post message failed: %s", err)
 		// }
-	case "monthly-report":
+	case "longterm-report":
 		if err := userSupportFlag.Parse(subCommandArgs[1:]); err != nil {
-			log.Fatalf("parsing user support flag: %s", err)
+			log.Fatalf("parsing longterm report flag: %s", err)
 		}
 		usrepo := ius.NewUserSupportRepository(ghcli)
 		us := dus.NewUserSupport(usrepo)
-		var until time.Time
+		var origin time.Time
 		var err error
-		if until, err = time.ParseInLocation("2006-01-02", *untilStr, jst); err != nil {
-			log.Fatalf("could not parse: %s", *untilStr)
+		if origin, err = time.ParseInLocation("2006-01-02", *longtermOriginStr, jst); err != nil {
+			log.Fatalf("could not parse: %s", *longtermOriginStr)
 		}
-		span := 4
-		LongTermStats, err := us.GetLongTermReportStats(until, subCommandArgs[0], span)
+		LongTermStats, err := us.GetLongTermReportStats(origin, *longtermKindStr, *longtermSpanInt)
 		if err != nil {
-			log.Fatalf("get user support stats: %s", err)
+			log.Fatalf("get longterm stats: %s", err)
 		}
 		fmt.Printf("%s", LongTermStats.GenLongTermReport())
 	case "analysis-report":
