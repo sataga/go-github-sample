@@ -6,6 +6,7 @@ package usersupport
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -301,9 +302,9 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 		name       string
 		fields     fields
 		args       args
-		want       *LongTermStats
+		want       LongTermStats
 		wantErr    bool
-		beforefunc func(f *fields, until time.Time, kind string, span int)
+		beforefunc func(f *fields, w *LongTermStats, until time.Time, kind string, span int)
 		afterfunc  func()
 	}{
 		// TODO: Add test cases.
@@ -315,7 +316,7 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 				span:  4,
 			},
 			wantErr: false,
-			beforefunc: func(f *fields, until time.Time, kind string, span int) {
+			beforefunc: func(f *fields, w *LongTermStats, until time.Time, kind string, span int) {
 				c = gomock.NewController(t)
 				musr := NewMockRepository(c)
 				var since time.Time
@@ -327,10 +328,23 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 					since = time.Date(until.Year(), until.Month(), 1, 0, 0, 0, 0, loc)
 					until = since.AddDate(0, +1, -1)
 				}
+				var cnt int
 				for i := 1; i <= span; i++ {
-					creates, closes := tmpGetIssue(since, until, testIssues)
-					musr.EXPECT().GetCreatedSupportIssues(since, until).Return(creates, nil)
-					musr.EXPECT().GetClosedSupportIssues(since, until).Return(closes, nil)
+					startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
+					cri := getCreatedIssue(since, until, testIssues)
+					cli := getClosedIssue(since, until, testIssues)
+					w.SummaryStats[startEnd] = &SummaryStats{
+						Span:             startEnd,
+						NumCreatedIssues: len(cri),
+					}
+					for _, issue := range cli {
+						w.DetailStats[cnt] = &DetailStats{}
+						w.DetailStats[cnt].writeDetailStatsForTest(issue, startEnd)
+						cnt++
+					}
+
+					musr.EXPECT().GetCreatedSupportIssues(since, until).Return(cri, nil)
+					musr.EXPECT().GetClosedSupportIssues(since, until).Return(cli, nil)
 
 					switch kind {
 					case "weekly":
@@ -344,20 +358,32 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 				f.repo = musr
 			},
 			afterfunc: func() {
-
+				c.Finish()
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
+			tt.want = LongTermStats{
+				SummaryStats: make(map[string]*SummaryStats, tt.args.span),
+				DetailStats:  make(map[int]*DetailStats, tt.args.span),
+			}
 			if tt.beforefunc != nil {
-				tt.beforefunc(&tt.fields, tt.args.until, tt.args.kind, tt.args.span)
+				tt.beforefunc(&tt.fields, &tt.want, tt.args.until, tt.args.kind, tt.args.span)
 			}
 			if tt.afterfunc != nil {
 				defer tt.afterfunc()
 			}
 			us := &userSupport{
 				repo: tt.fields.repo,
+			}
+			fmt.Println(tt.want.SummaryStats)
+			for _, ss := range tt.want.SummaryStats {
+				fmt.Println(ss)
+			}
+			for _, ds := range tt.want.DetailStats {
+				fmt.Println(ds)
 			}
 			got, err := us.GetLongTermReportStats(tt.args.until, tt.args.kind, tt.args.span)
 			if (err != nil) != tt.wantErr {
@@ -371,16 +397,76 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 	}
 }
 
-func tmpGetIssue(since, until time.Time, issues []*github.Issue) (creates []*github.Issue, closes []*github.Issue) {
-	creates = make([]*github.Issue, 0, len(issues))
-	closes = make([]*github.Issue, 0, len(issues))
+func getCreatedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
+	iss := make([]*github.Issue, 0, len(issues))
 	for _, is := range issues {
 		if is.CreatedAt != nil && is.CreatedAt.After(since) && is.CreatedAt.Before(until) {
-			creates = append(creates, is)
-		}
-		if is.ClosedAt != nil && is.ClosedAt.After(since) && is.ClosedAt.Before(until) {
-			closes = append(closes, is)
+			iss = append(iss, is)
 		}
 	}
-	return creates, closes
+	return iss
+}
+
+func getClosedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
+	iss := make([]*github.Issue, 0, len(issues))
+	for _, is := range issues {
+		if is.ClosedAt != nil && is.ClosedAt.After(since) && is.ClosedAt.Before(until) {
+			iss = append(iss, is)
+		}
+	}
+	return iss
+}
+
+func (ds *DetailStats) writeDetailStatsForTest(issue *github.Issue, startEnd string) {
+	var labels []string
+	if issue.Labels != nil {
+		for _, label := range issue.Labels {
+			fmt.Println(*label.Name)
+			if strings.Contains(*label.Name, "keyword") {
+				labels = append(labels, strings.Replace(*label.Name, "keyword:", "", -1))
+			}
+			if strings.Contains(*label.Name, "緊急度") {
+				ds.Urgency = strings.Replace(*label.Name, "緊急度：", "", -1)
+			}
+			if strings.Contains(*label.Name, "CaaS-") {
+				ds.TeamName = strings.Replace(*label.Name, " 対応中", "", -1)
+			}
+			if strings.Contains(*label.Name, "Escalation") {
+				ds.TeamAResolve = true
+			}
+			if strings.Contains(*label.Name, "genre") {
+				ds.Genre = strings.Replace(*label.Name, "genre:", "", -1)
+			}
+		}
+	}
+	var assigns []string
+	if issue.Assignees != nil {
+		for _, assign := range issue.Assignees {
+			assigns = append(assigns, "@"+*assign.Login)
+		}
+	}
+
+	var totalTime int
+	if issue.State != nil && *issue.State == "closed" {
+		totalTime = int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours())
+		ds.ClosedAt = issue.ClosedAt.In(jp).Format("2006-01-02")
+	} else {
+		totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
+	}
+
+	titleMatches := titlePattern.FindStringSubmatch(*issue.Title)
+	if len(titleMatches) == 2 {
+		ds.ServiceID = "INC" + titleMatches[1]
+	}
+
+	ds.Assignee = strings.Join(assigns, " ")
+	ds.Title = *issue.Title
+	ds.HTMLURL = *issue.HTMLURL
+	ds.NumComments = *issue.Comments
+	ds.State = *issue.State
+	ds.CreatedAt = issue.CreatedAt.In(jp).Format("2006-01-02")
+	ds.OpenDuration = totalTime
+	ds.Assignee = strings.Join(assigns, " ")
+	ds.Labels = strings.Join(labels, " ")
+	ds.TargetSpan = startEnd
 }
