@@ -19,6 +19,7 @@ var (
 	ghMail  = flag.String("ghmail", "", "Github user email")
 	ghToken = flag.String("ghtoken", "", "GitHub Personal access token")
 
+	loc, _          = time.LoadLocation("Asia/Tokyo")
 	now             = time.Now()
 	oneWeekBefore   = now.Add(-7 * 24 * time.Hour)
 	userSupportFlag = flag.NewFlagSet("us", flag.ExitOnError)
@@ -99,14 +100,44 @@ func main() {
 		}
 		usrepo := ius.NewUserSupportRepository(ghcli)
 		us := dus.NewUserSupport(usrepo)
-		var origin time.Time
+		var since, until time.Time
 		var err error
-		if origin, err = time.ParseInLocation("2006-01-02", *longtermOriginStr, jst); err != nil {
+		if until, err = time.ParseInLocation("2006-01-02", *longtermOriginStr, jst); err != nil {
 			log.Fatalf("could not parse: %s", *longtermOriginStr)
 		}
-		LongTermStats, err := us.GetLongTermReportStats(origin, *longtermKindStr, *longtermSpanInt)
-		if err != nil {
-			log.Fatalf("get longterm stats: %s", err)
+		switch *longtermKindStr {
+		case "weekly":
+			since = until.AddDate(0, 0, -7)
+		case "monthly":
+			since = time.Date(until.Year(), until.Month(), 1, 0, 0, 0, 0, loc)
+			until = since.AddDate(0, +1, -1)
+		}
+		LongTermStats := &dus.LongTermStats{
+			SummaryStats: make(map[string]*dus.SummaryStats, *longtermSpanInt),
+			DetailStats:  make(map[int]*dus.DetailStats),
+		}
+		cnt := 0
+		for i := 1; i <= *longtermSpanInt; i++ {
+			result, err := us.GetLongTermReportStats(since, until)
+			fmt.Println(result)
+			for key, val := range result.SummaryStats {
+				LongTermStats.SummaryStats[key] = val
+			}
+			for _, val := range result.DetailStats {
+				LongTermStats.DetailStats[cnt] = val
+				cnt++
+			}
+			if err != nil {
+				log.Fatalf("get longterm stats: %s", err)
+			}
+			switch *longtermKindStr {
+			case "weekly":
+				since = since.AddDate(0, 0, -7)
+				until = until.AddDate(0, 0, -7)
+			case "monthly":
+				since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
+				until = since.AddDate(0, +1, -1)
+			}
 		}
 		fmt.Printf("%s", LongTermStats.GenLongTermReport())
 	case "analysis-report":
