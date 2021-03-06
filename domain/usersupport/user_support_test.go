@@ -282,143 +282,6 @@ func TestDailyStats_GetDailyReportStats(t *testing.T) {
 	}
 }
 
-// func Test_userSupport_GetLongTermReportStats(t *testing.T) {
-// 	var c *gomock.Controller
-
-// 	testIssues := []*github.Issue{
-// 		issuePatterns[0],
-// 		issuePatterns[1],
-// 		issuePatterns[2],
-// 		issuePatterns[3],
-// 	}
-
-// 	type fields struct {
-// 		repo Repository
-// 	}
-// 	type args struct {
-// 		until time.Time
-// 		kind  string
-// 		span  int
-// 	}
-// 	tests := []struct {
-// 		name       string
-// 		fields     fields
-// 		args       args
-// 		want       LongTermStats
-// 		wantErr    bool
-// 		beforefunc func(f *fields, w *LongTermStats, until time.Time, kind string, span int)
-// 		afterfunc  func()
-// 	}{
-// 		// TODO: Add test cases.
-// 		{
-// 			name: "Normal operation",
-// 			args: args{
-// 				until: now,
-// 				kind:  "weekly",
-// 				span:  4,
-// 			},
-// 			wantErr: false,
-// 			beforefunc: func(f *fields, w *LongTermStats, until time.Time, kind string, span int) {
-// 				c = gomock.NewController(t)
-// 				musr := NewMockRepository(c)
-// 				var since time.Time
-// 				loc, _ := time.LoadLocation("Asia/Tokyo")
-// 				switch kind {
-// 				case "weekly":
-// 					since = until.AddDate(0, 0, -7)
-// 				case "monthly":
-// 					since = time.Date(until.Year(), until.Month(), 1, 0, 0, 0, 0, loc)
-// 					until = since.AddDate(0, +1, -1)
-// 				}
-// 				var cnt int
-// 				for i := 1; i <= span; i++ {
-// 					startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
-// 					cri := getCreatedIssue(since, until, testIssues)
-// 					cli := getClosedIssue(since, until, testIssues)
-// 					w.SummaryStats[startEnd] = &SummaryStats{
-// 						Span:             startEnd,
-// 						NumCreatedIssues: len(cri),
-// 					}
-// 					for _, issue := range cli {
-// 						w.DetailStats[cnt] = &DetailStats{}
-// 						w.DetailStats[cnt].writeDetailStatsForTest(issue, startEnd)
-// 						cnt++
-// 					}
-
-// 					musr.EXPECT().GetCreatedSupportIssues(since, until).Return(cri, nil)
-// 					musr.EXPECT().GetClosedSupportIssues(since, until).Return(cli, nil)
-
-// 					switch kind {
-// 					case "weekly":
-// 						since = since.AddDate(0, 0, -7)
-// 						until = until.AddDate(0, 0, -7)
-// 					case "monthly":
-// 						since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
-// 						until = since.AddDate(0, +1, -1)
-// 					}
-// 				}
-// 				f.repo = musr
-// 			},
-// 			afterfunc: func() {
-// 				c.Finish()
-// 			},
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-
-// 			tt.want = LongTermStats{
-// 				SummaryStats: make(map[string]*SummaryStats, tt.args.span),
-// 				DetailStats:  make(map[int]*DetailStats, tt.args.span),
-// 			}
-// 			if tt.beforefunc != nil {
-// 				tt.beforefunc(&tt.fields, &tt.want, tt.args.until, tt.args.kind, tt.args.span)
-// 			}
-// 			if tt.afterfunc != nil {
-// 				defer tt.afterfunc()
-// 			}
-// 			us := &userSupport{
-// 				repo: tt.fields.repo,
-// 			}
-// 			fmt.Println(tt.want.SummaryStats)
-// 			for _, ss := range tt.want.SummaryStats {
-// 				fmt.Println(ss)
-// 			}
-// 			for _, ds := range tt.want.DetailStats {
-// 				fmt.Println(ds)
-// 			}
-// 			got, err := us.GetLongTermReportStats(tt.args.until, tt.args.kind, tt.args.span)
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("userSupport.GetLongTermReportStats() error = %v, wantErr %v", err, tt.wantErr)
-// 				return
-// 			}
-// 			if !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("userSupport.GetLongTermReportStats() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
-
-func getCreatedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
-	iss := make([]*github.Issue, 0, len(issues))
-	for _, is := range issues {
-		if is.CreatedAt != nil && is.CreatedAt.After(since) && is.CreatedAt.Before(until) {
-			iss = append(iss, is)
-		}
-	}
-	return iss
-}
-
-func getClosedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
-	iss := make([]*github.Issue, 0, len(issues))
-	for _, is := range issues {
-		if is.ClosedAt != nil && is.ClosedAt.After(since) && is.ClosedAt.Before(until) {
-			iss = append(iss, is)
-		}
-	}
-	return iss
-}
-
 func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 	var c *gomock.Controller
 
@@ -550,4 +413,24 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 			}
 		})
 	}
+}
+
+func getCreatedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
+	iss := make([]*github.Issue, 0, len(issues))
+	for _, is := range issues {
+		if is.CreatedAt != nil && is.CreatedAt.After(since) && is.CreatedAt.Before(until) {
+			iss = append(iss, is)
+		}
+	}
+	return iss
+}
+
+func getClosedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
+	iss := make([]*github.Issue, 0, len(issues))
+	for _, is := range issues {
+		if is.ClosedAt != nil && is.ClosedAt.After(since) && is.ClosedAt.Before(until) {
+			iss = append(iss, is)
+		}
+	}
+	return iss
 }
