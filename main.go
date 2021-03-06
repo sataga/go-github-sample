@@ -119,7 +119,6 @@ func main() {
 		cnt := 0
 		for i := 1; i <= *longtermSpanInt; i++ {
 			result, err := us.GetLongTermReportStats(since, until)
-			fmt.Println(result)
 			for key, val := range result.SummaryStats {
 				LongTermStats.SummaryStats[key] = val
 			}
