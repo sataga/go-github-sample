@@ -22,7 +22,7 @@ var (
 // UserSupport is interface for getting user support info
 type UserSupport interface {
 	GetDailyReportStats(now time.Time, dayAgo int) (*DailyStats, error)
-	GetLongTermReportStats(until time.Time, kind string, span int) (*LongTermStats, error)
+	GetLongTermReportStats(since, until time.Time) (*LongTermStats, error)
 	GetAnalysisReportStats(since, until time.Time, state string, span int) (*AnalysisStats, error)
 	GetKeywordReportStats(until time.Time, kind string, span int) (*KeywordStats, error)
 	MethodTest(since, until time.Time) (*AnalysisStats, error)
@@ -105,7 +105,6 @@ type DetailStats struct {
 	TargetSpan   string `yaml:"detail_stats_of_target_span"`
 	TeamName     string `yaml:"detail_stats_of_team_name"`
 	Urgency      string `yaml:"detail_stats_of_urgency"`
-	TeamAResolve bool   `yaml:"detail_stats_of_team_a_resolve"`
 	Genre        string `yaml:"detail_stats_of_genre"`
 	Labels       string `yaml:"detail_stats_of_labels"`
 	Assignee     string `yaml:"detail_stats_of_assign"`
@@ -192,123 +191,92 @@ func (ds *DailyStats) GetDailyReportStats() string {
 	return sb.String()
 }
 
-func (us *userSupport) GetLongTermReportStats(until time.Time, kind string, span int) (*LongTermStats, error) {
-	var since time.Time
-	loc, _ := time.LoadLocation("Asia/Tokyo")
-	switch kind {
-	case "weekly-report":
-		since = until.AddDate(0, 0, -7)
-	case "monthly-report":
-		since = time.Date(until.Year(), until.Month(), 1, 0, 0, 0, 0, loc)
-		until = since.AddDate(0, +1, -1)
-	}
+func (us *userSupport) GetLongTermReportStats(since, until time.Time) (*LongTermStats, error) {
 
 	LongTermStats := &LongTermStats{
-		SummaryStats: make(map[string]*SummaryStats, span),
-		DetailStats:  make(map[int]*DetailStats, span),
+		SummaryStats: make(map[string]*SummaryStats),
+		DetailStats:  make(map[int]*DetailStats),
 	}
 	cnt := 0
-	for i := 1; i <= span; i++ {
-		startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
-		cri, err := us.repo.GetCreatedSupportIssues(since, until)
-		if err != nil {
-			return nil, fmt.Errorf("get open issues : %s", err)
-		}
-		upi, err := us.repo.GetUpdatedSupportIssues(since, until)
-		if err != nil {
-			return nil, fmt.Errorf("get open issues : %s", err)
-		}
-		numClosed := 0
-		for _, issue := range upi {
-			if issue.State != nil && *issue.State == "closed" {
-				numClosed++
-			}
-		}
+	startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
+	cri, err := us.repo.GetCreatedSupportIssues(since, until)
+	if err != nil {
+		return nil, fmt.Errorf("get open issues : %s", err)
+	}
 
-		cli, err := us.repo.GetClosedSupportIssues(since, until)
-		if err != nil {
-			return nil, fmt.Errorf("get updated issues : %s", err)
-		}
+	cli, err := us.repo.GetClosedSupportIssues(since, until)
+	if err != nil {
+		return nil, fmt.Errorf("get updated issues : %s", err)
+	}
 
-		LongTermStats.SummaryStats[startEnd] = &SummaryStats{
-			Span:             startEnd,
-			NumClosedIssues:  numClosed,
-			NumCreatedIssues: len(cri),
+	LongTermStats.SummaryStats[startEnd] = &SummaryStats{
+		Span:             startEnd,
+		NumCreatedIssues: len(cri),
+	}
+	for _, issue := range cli {
+		LongTermStats.DetailStats[cnt] = &DetailStats{
+			Escalation: false,
 		}
-		for _, issue := range cli {
-			LongTermStats.DetailStats[cnt] = &DetailStats{
-				TeamAResolve: false,
-			}
+		if labelContains(issue.Labels, "genre:通常問合せ") {
+			LongTermStats.SummaryStats[startEnd].NumGenreNormalIssues++
+		}
+		if labelContains(issue.Labels, "genre:要望") {
+			LongTermStats.SummaryStats[startEnd].NumGenreRequestIssues++
+		}
+		if labelContains(issue.Labels, "genre:サービス障害") {
+			LongTermStats.SummaryStats[startEnd].NumGenreFailureIssues++
+		}
+		if labelContains(issue.Labels, "Escalation") {
+			LongTermStats.SummaryStats[startEnd].NumEscalationAllIssues++
 			if labelContains(issue.Labels, "genre:通常問合せ") {
-				LongTermStats.SummaryStats[startEnd].NumGenreNormalIssues++
+				LongTermStats.SummaryStats[startEnd].NumEscalationNormalIssues++
 			}
 			if labelContains(issue.Labels, "genre:要望") {
-				LongTermStats.SummaryStats[startEnd].NumGenreRequestIssues++
+				LongTermStats.SummaryStats[startEnd].NumEscalationRequestIssues++
 			}
 			if labelContains(issue.Labels, "genre:サービス障害") {
-				LongTermStats.SummaryStats[startEnd].NumGenreFailureIssues++
+				LongTermStats.SummaryStats[startEnd].NumEscalationFailureIssues++
 			}
-			if labelContains(issue.Labels, "Escalation") {
-				LongTermStats.SummaryStats[startEnd].NumEscalationAllIssues++
-				if labelContains(issue.Labels, "genre:通常問合せ") {
-					LongTermStats.SummaryStats[startEnd].NumEscalationNormalIssues++
-				}
-				if labelContains(issue.Labels, "genre:要望") {
-					LongTermStats.SummaryStats[startEnd].NumEscalationRequestIssues++
-				}
-				if labelContains(issue.Labels, "genre:サービス障害") {
-					LongTermStats.SummaryStats[startEnd].NumEscalationFailureIssues++
-				}
-			}
-			if labelContains(issue.Labels, "緊急度：高") || labelContains(issue.Labels, "緊急度：中") {
-				LongTermStats.SummaryStats[startEnd].NumUrgencyHighIssues++
-			}
-			if labelContains(issue.Labels, "緊急度：低") {
-				LongTermStats.SummaryStats[startEnd].NumUrgencyLowIssues++
-			}
-
-			var totalTime int
-			if issue.State != nil && *issue.State == "closed" {
-				totalTime = int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours())
-			} else {
-				totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
-			}
-			switch {
-			case totalTime <= 2*24:
-				LongTermStats.SummaryStats[startEnd].NumScoreA++
-			case totalTime <= 5*24:
-				LongTermStats.SummaryStats[startEnd].NumScoreB++
-			case totalTime <= 10*24:
-				LongTermStats.SummaryStats[startEnd].NumScoreC++
-			case totalTime <= 20*24:
-				LongTermStats.SummaryStats[startEnd].NumScoreD++
-			case totalTime <= 30*24:
-				LongTermStats.SummaryStats[startEnd].NumScoreE++
-			default:
-				LongTermStats.SummaryStats[startEnd].NumScoreF++
-			}
-
-			LongTermStats.DetailStats[cnt].writeDetailStats(issue, startEnd)
-			cnt++
 		}
-		LongTermStats.SummaryStats[startEnd].NumClosedIssues = len(cli)
-		if LongTermStats.SummaryStats[startEnd].NumClosedIssues == 0 {
-			LongTermStats.SummaryStats[startEnd].NumTotalScore = 0
+		if labelContains(issue.Labels, "緊急度：高") || labelContains(issue.Labels, "緊急度：中") {
+			LongTermStats.SummaryStats[startEnd].NumUrgencyHighIssues++
+		}
+		if labelContains(issue.Labels, "緊急度：低") {
+			LongTermStats.SummaryStats[startEnd].NumUrgencyLowIssues++
+		}
+
+		var totalTime int
+		if issue.State != nil && *issue.State == "closed" {
+			totalTime = int(issue.ClosedAt.Sub(*issue.CreatedAt).Hours())
 		} else {
-			tmpTotal := (LongTermStats.SummaryStats[startEnd].NumScoreA * 1) + (LongTermStats.SummaryStats[startEnd].NumScoreB * 2) + (LongTermStats.SummaryStats[startEnd].NumScoreC * 3) + (LongTermStats.SummaryStats[startEnd].NumScoreD * 4) + (LongTermStats.SummaryStats[startEnd].NumScoreE * 5) + (LongTermStats.SummaryStats[startEnd].NumScoreF * 6)
-			LongTermStats.SummaryStats[startEnd].NumTotalScore = float64(tmpTotal) / float64(LongTermStats.SummaryStats[startEnd].NumClosedIssues)
+			totalTime = int(issue.UpdatedAt.Sub(*issue.CreatedAt).Hours())
+		}
+		switch {
+		case totalTime <= 2*24:
+			LongTermStats.SummaryStats[startEnd].NumScoreA++
+		case totalTime <= 5*24:
+			LongTermStats.SummaryStats[startEnd].NumScoreB++
+		case totalTime <= 10*24:
+			LongTermStats.SummaryStats[startEnd].NumScoreC++
+		case totalTime <= 20*24:
+			LongTermStats.SummaryStats[startEnd].NumScoreD++
+		case totalTime <= 30*24:
+			LongTermStats.SummaryStats[startEnd].NumScoreE++
+		default:
+			LongTermStats.SummaryStats[startEnd].NumScoreF++
 		}
 
-		switch kind {
-		case "weekly-report":
-			since = since.AddDate(0, 0, -7)
-			until = until.AddDate(0, 0, -7)
-		case "monthly-report":
-			since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
-			until = since.AddDate(0, +1, -1)
-		}
-
+		LongTermStats.DetailStats[cnt].writeDetailStats(issue, startEnd)
+		cnt++
 	}
+	LongTermStats.SummaryStats[startEnd].NumClosedIssues = len(cli)
+	if LongTermStats.SummaryStats[startEnd].NumClosedIssues == 0 {
+		LongTermStats.SummaryStats[startEnd].NumTotalScore = 0
+	} else {
+		tmpTotal := (LongTermStats.SummaryStats[startEnd].NumScoreA * 1) + (LongTermStats.SummaryStats[startEnd].NumScoreB * 2) + (LongTermStats.SummaryStats[startEnd].NumScoreC * 3) + (LongTermStats.SummaryStats[startEnd].NumScoreD * 4) + (LongTermStats.SummaryStats[startEnd].NumScoreE * 5) + (LongTermStats.SummaryStats[startEnd].NumScoreF * 6)
+		LongTermStats.SummaryStats[startEnd].NumTotalScore = float64(tmpTotal) / float64(LongTermStats.SummaryStats[startEnd].NumClosedIssues)
+	}
+
 	return LongTermStats, nil
 }
 
@@ -658,7 +626,7 @@ func (us *userSupport) MethodTest(since, until time.Time) (*AnalysisStats, error
 	}
 	for i, issue := range cli {
 		AnalysisStats.DetailStats[i] = &DetailStats{
-			TeamAResolve: false,
+			Escalation: false,
 		}
 		AnalysisStats.DetailStats[i].writeDetailStats(issue, startEnd)
 	}
@@ -679,7 +647,7 @@ func (ds *DetailStats) writeDetailStats(issue *github.Issue, startEnd string) {
 				ds.TeamName = strings.Replace(*label.Name, " 対応中", "", -1)
 			}
 			if strings.Contains(*label.Name, "Escalation") {
-				ds.TeamAResolve = true
+				ds.Escalation = true
 			}
 			if strings.Contains(*label.Name, "genre") {
 				ds.Genre = strings.Replace(*label.Name, "genre:", "", -1)
