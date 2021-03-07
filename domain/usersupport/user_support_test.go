@@ -293,13 +293,14 @@ func TestDailyStats_GetDailyReportStats(t *testing.T) {
 func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 	var c *gomock.Controller
 
-	testIssues := []*github.Issue{
+	closeIssues := []*github.Issue{
 		issuePatterns[0],
 		issuePatterns[1],
+	}
+	openIssues := []*github.Issue{
 		issuePatterns[2],
 		issuePatterns[3],
 	}
-
 	type fields struct {
 		repo Repository
 	}
@@ -328,7 +329,7 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 				SummaryStats: map[string]*SummaryStats{
 					startEnd: {
 						Span:                       startEnd,
-						NumCreatedIssues:           3,
+						NumCreatedIssues:           2,
 						NumClosedIssues:            2,
 						NumGenreNormalIssues:       1,
 						NumGenreRequestIssues:      1,
@@ -382,10 +383,8 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 			beforefunc: func(f *fields, since, until time.Time) {
 				c = gomock.NewController(t)
 				musr := NewMockRepository(c)
-				cri := getCreatedIssue(since, until, testIssues)
-				cli := getClosedIssue(since, until, testIssues)
-				musr.EXPECT().GetCreatedSupportIssues(since, until).Return(cri, nil)
-				musr.EXPECT().GetClosedSupportIssues(since, until).Return(cli, nil)
+				musr.EXPECT().GetCreatedSupportIssues(since, until).Return(openIssues, nil)
+				musr.EXPECT().GetClosedSupportIssues(since, until).Return(closeIssues, nil)
 				f.repo = musr
 			},
 		},
@@ -423,26 +422,6 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 			}
 		})
 	}
-}
-
-func getCreatedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
-	iss := make([]*github.Issue, 0, len(issues))
-	for _, is := range issues {
-		if is.CreatedAt != nil && is.CreatedAt.After(since) && is.CreatedAt.Before(until) {
-			iss = append(iss, is)
-		}
-	}
-	return iss
-}
-
-func getClosedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
-	iss := make([]*github.Issue, 0, len(issues))
-	for _, is := range issues {
-		if is.ClosedAt != nil && is.ClosedAt.After(since) && is.ClosedAt.Before(until) {
-			iss = append(iss, is)
-		}
-	}
-	return iss
 }
 
 func TestLongTermStats_GenLongTermReport(t *testing.T) {
@@ -644,14 +623,14 @@ func Test_userSupport_GetAnalysisReportStats(t *testing.T) {
 				repo: tt.fields.repo,
 			}
 			got, err := us.GetAnalysisReportStats(tt.args.since, tt.args.until, tt.args.state)
-			for k, v := range tt.want.DetailStats {
-				fmt.Printf("want:%d", k)
-				fmt.Println(v)
-			}
-			for k, v := range got.DetailStats {
-				fmt.Printf("got :%d", k)
-				fmt.Println(v)
-			}
+			// for k, v := range tt.want.DetailStats {
+			// 	fmt.Printf("want:%d", k)
+			// 	fmt.Println(v)
+			// }
+			// for k, v := range got.DetailStats {
+			// 	fmt.Printf("got :%d", k)
+			// 	fmt.Println(v)
+			// }
 			if (err != nil) != tt.wantErr {
 				t.Errorf("userSupport.GetAnalysisReportStats() error = %v, wantErr %v", err, tt.wantErr)
 				return
