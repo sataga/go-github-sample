@@ -37,6 +37,8 @@ var (
 				{Name: github.String("PF_Support")},
 				{Name: github.String("緊急度：低")},
 				{Name: github.String("CaaS-A 対応中")},
+				{Name: github.String("Escalation")},
+				{Name: github.String("genre:通常問合せ")},
 			},
 			HTMLURL: github.String("https://github.com/sataga/issue-warehouse/issues/1"),
 		},
@@ -55,6 +57,7 @@ var (
 				{Name: github.String("PF_Support")},
 				{Name: github.String("緊急度：中")},
 				{Name: github.String("CaaS-A 対応中")},
+				{Name: github.String("genre:要望")},
 			},
 			HTMLURL: github.String("https://github.com/sataga/issue-warehouse/issues/2"),
 		},
@@ -70,6 +73,7 @@ var (
 				{Name: github.String("PF_Support")},
 				{Name: github.String("緊急度：高")},
 				{Name: github.String("CaaS-A 対応中")},
+				{Name: github.String("genre:サービス障害")},
 			},
 			HTMLURL: github.String("https://github.com/sataga/issue-warehouse/issues/3"),
 		},
@@ -85,6 +89,7 @@ var (
 				{Name: github.String("PF_Support")},
 				{Name: github.String("緊急度：低")},
 				{Name: github.String("CaaS-B 対応中")},
+				{Name: github.String("genre:通常問合せ")},
 			},
 			HTMLURL: github.String("https://github.com/sataga/issue-warehouse/issues/4"),
 		},
@@ -138,6 +143,7 @@ func Test_userSupport_GetDailyReportStats(t *testing.T) {
 						TargetSpan:   fiveDayAgo.Format("2006-01-02"),
 						TeamName:     "CaaS-A",
 						Urgency:      "高",
+						Genre:        "サービス障害",
 						NumComments:  3,
 						OpenDuration: 119,
 						Escalation:   false,
@@ -150,6 +156,7 @@ func Test_userSupport_GetDailyReportStats(t *testing.T) {
 						TargetSpan:   fiveDayAgo.Format("2006-01-02"),
 						TeamName:     "CaaS-B",
 						Urgency:      "低",
+						Genre:        "通常問合せ",
 						NumComments:  4,
 						OpenDuration: 71,
 						Escalation:   false,
@@ -322,11 +329,11 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 						Span:                       startEnd,
 						NumCreatedIssues:           2,
 						NumClosedIssues:            2,
-						NumGenreNormalIssues:       0,
-						NumGenreRequestIssues:      0,
+						NumGenreNormalIssues:       1,
+						NumGenreRequestIssues:      1,
 						NumGenreFailureIssues:      0,
-						NumEscalationAllIssues:     0,
-						NumEscalationNormalIssues:  0,
+						NumEscalationAllIssues:     1,
+						NumEscalationNormalIssues:  1,
 						NumEscalationRequestIssues: 0,
 						NumEscalationFailureIssues: 0,
 						NumUrgencyHighIssues:       1,
@@ -350,9 +357,10 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 						TargetSpan:   startEnd,
 						TeamName:     "CaaS-A",
 						Urgency:      "低",
+						Genre:        "通常問合せ",
 						NumComments:  1,
 						OpenDuration: 168,
-						Escalation:   false,
+						Escalation:   true,
 					},
 					1: {
 						Title:        "issue 2",
@@ -363,6 +371,7 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 						TargetSpan:   startEnd,
 						TeamName:     "CaaS-A",
 						Urgency:      "中",
+						Genre:        "要望",
 						NumComments:  2,
 						OpenDuration: 96,
 						Escalation:   false,
@@ -433,4 +442,29 @@ func getClosedIssue(since, until time.Time, issues []*github.Issue) []*github.Is
 		}
 	}
 	return iss
+}
+
+func TestLongTermStats_GenLongTermReport(t *testing.T) {
+	type fields struct {
+		SummaryStats map[string]*SummaryStats
+		DetailStats  map[int]*DetailStats
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lts := &LongTermStats{
+				SummaryStats: tt.fields.SummaryStats,
+				DetailStats:  tt.fields.DetailStats,
+			}
+			if got := lts.GenLongTermReport(); got != tt.want {
+				t.Errorf("LongTermStats.GenLongTermReport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
