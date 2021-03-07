@@ -554,3 +554,111 @@ func TestLongTermStats_GenLongTermReport(t *testing.T) {
 		})
 	}
 }
+
+func Test_userSupport_GetAnalysisReportStats(t *testing.T) {
+	var c *gomock.Controller
+
+	testIssues := []*github.Issue{
+		issuePatterns[0],
+		issuePatterns[1],
+	}
+	type fields struct {
+		repo Repository
+	}
+	type args struct {
+		since time.Time
+		until time.Time
+		state string
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		args       args
+		want       *AnalysisStats
+		wantErr    bool
+		beforefunc func(f *fields, state string)
+		afterfunc  func()
+	}{
+		// TODO: Add test cases.
+		{
+			name: "Normal operation for created",
+			args: args{
+				since: firstDayOfMonth,
+				until: lastDayOfMonth,
+				state: "created",
+			},
+			wantErr: false,
+			want: &AnalysisStats{
+				DetailStats: map[int]*DetailStats{
+					0: {
+						Title:        "issue 1",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/1",
+						CreatedAt:    tenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "低",
+						Genre:        "通常問合せ",
+						NumComments:  1,
+						OpenDuration: 168,
+						Escalation:   true,
+					},
+					1: {
+						Title:        "issue 2",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/2",
+						CreatedAt:    sevenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "中",
+						Genre:        "要望",
+						NumComments:  2,
+						OpenDuration: 96,
+						Escalation:   false,
+					},
+				},
+			},
+			beforefunc: func(f *fields, state string) {
+				c = gomock.NewController(t)
+				musr := NewMockRepository(c)
+				if state == "created" {
+					musr.EXPECT().GetCreatedSupportIssues(gomock.Any(), gomock.Any()).Return(testIssues, nil)
+				} else {
+					musr.EXPECT().GetClosedSupportIssues(gomock.Any(), gomock.Any()).Return(testIssues, nil)
+				}
+				f.repo = musr
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.beforefunc != nil {
+				tt.beforefunc(&tt.fields, tt.args.state)
+			}
+			if tt.afterfunc != nil {
+				defer tt.afterfunc()
+			}
+			us := &userSupport{
+				repo: tt.fields.repo,
+			}
+			got, err := us.GetAnalysisReportStats(tt.args.since, tt.args.until, tt.args.state)
+			for k, v := range tt.want.DetailStats {
+				fmt.Printf("want:%d", k)
+				fmt.Println(v)
+			}
+			for k, v := range got.DetailStats {
+				fmt.Printf("got :%d", k)
+				fmt.Println(v)
+			}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("userSupport.GetAnalysisReportStats() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("userSupport.GetAnalysisReportStats() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
