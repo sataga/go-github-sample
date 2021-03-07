@@ -641,3 +641,66 @@ func Test_userSupport_GetAnalysisReportStats(t *testing.T) {
 		})
 	}
 }
+
+func TestAnalysisStats_GenAnalysisReport(t *testing.T) {
+	type fields struct {
+		DetailStats map[int]*DetailStats
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		// TODO: Add test cases.
+		{
+			name: "print analysis-report",
+			fields: fields{
+				DetailStats: map[int]*DetailStats{
+					0: {
+						Title:        "issue 1",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/1",
+						CreatedAt:    tenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "低",
+						Genre:        "通常問合せ",
+						NumComments:  1,
+						OpenDuration: 168,
+						Escalation:   true,
+					},
+					1: {
+						Title:        "issue 2",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/2",
+						CreatedAt:    sevenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "中",
+						Genre:        "要望",
+						NumComments:  2,
+						OpenDuration: 96,
+						Escalation:   false,
+					},
+				},
+			},
+			want: `期間,Title,起票日,クローズ日,ステータス,担当チーム,担当アサイン,緊急度,問い合わせ種別,エスカレ有無,コメント数,経過時間,Keywordラベル,URL
+startEnd,issue 1,2021-02-26,2021-03-05,closed,CaaS-A,,低,通常問合せ,true,1,168,,https://github.com/sataga/issue-warehouse/issues/1 
+startEnd,issue 2,2021-03-01,2021-03-05,closed,CaaS-A,,中,要望,false,2,96,,https://github.com/sataga/issue-warehouse/issues/2 
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			as := &AnalysisStats{
+				DetailStats: tt.fields.DetailStats,
+			}
+			tt.want = strings.Replace(tt.want, "startEnd", startEnd, -1)
+			if got := as.GenAnalysisReport(); got != tt.want {
+				t.Errorf("AnalysisStats.GenAnalysisReport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
