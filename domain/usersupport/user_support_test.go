@@ -6,6 +6,7 @@ package usersupport
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -327,7 +328,7 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 				SummaryStats: map[string]*SummaryStats{
 					startEnd: {
 						Span:                       startEnd,
-						NumCreatedIssues:           2,
+						NumCreatedIssues:           3,
 						NumClosedIssues:            2,
 						NumGenreNormalIssues:       1,
 						NumGenreRequestIssues:      1,
@@ -455,6 +456,90 @@ func TestLongTermStats_GenLongTermReport(t *testing.T) {
 		want   string
 	}{
 		// TODO: Add test cases.
+		{
+			name: "print monthly-report",
+			fields: fields{
+				SummaryStats: map[string]*SummaryStats{
+					startEnd: {
+						Span:                       startEnd,
+						NumCreatedIssues:           2,
+						NumClosedIssues:            2,
+						NumGenreNormalIssues:       1,
+						NumGenreRequestIssues:      1,
+						NumGenreFailureIssues:      0,
+						NumEscalationAllIssues:     1,
+						NumEscalationNormalIssues:  1,
+						NumEscalationRequestIssues: 0,
+						NumEscalationFailureIssues: 0,
+						NumUrgencyHighIssues:       1,
+						NumUrgencyLowIssues:        1,
+						NumScoreA:                  0,
+						NumScoreB:                  1,
+						NumScoreC:                  1,
+						NumScoreD:                  0,
+						NumScoreE:                  0,
+						NumScoreF:                  0,
+						NumTotalScore:              2.5,
+					},
+				},
+				DetailStats: map[int]*DetailStats{
+					0: {
+						Title:        "issue 1",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/1",
+						CreatedAt:    tenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "低",
+						Genre:        "通常問合せ",
+						NumComments:  1,
+						OpenDuration: 168,
+						Escalation:   true,
+					},
+					1: {
+						Title:        "issue 2",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/2",
+						CreatedAt:    sevenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "中",
+						Genre:        "要望",
+						NumComments:  2,
+						OpenDuration: 96,
+						Escalation:   false,
+					},
+				},
+			},
+			want: `## サマリー 
+|項目|startEnd|
+|----|----|
+|起票件数|2|
+|クローズ件数|2|
+|緊急度：高・中|1|
+|緊急度：低|1|
+|全体エスカレーション件数|1|
+|全体CaaS-A完結率(％)|50.0|
+|通常エスカレーション件数|1|
+|通常CaaS-A完結率(％)|50.0|
+|ジャンル:通常問合せ件数|1|
+|ジャンル:要望件数|1|
+|ジャンル:サービス障害件数|0|
+|合計スコア|2.50|
+|スコアA|0|
+|スコアB|1|
+|スコアC|1|
+|スコアD|0|
+|スコアE|0|
+|スコアF|0|
+
+## 詳細 
+- [issue 1](https://github.com/sataga/issue-warehouse/issues/1),低,通常問合せ,CaaS-A/,comment数:1,経過時間(hour):168,解決フラグ:true,(startEnd)
+- [issue 2](https://github.com/sataga/issue-warehouse/issues/2),中,要望,CaaS-A/,comment数:2,経過時間(hour):96,解決フラグ:false,(startEnd)
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -462,6 +547,7 @@ func TestLongTermStats_GenLongTermReport(t *testing.T) {
 				SummaryStats: tt.fields.SummaryStats,
 				DetailStats:  tt.fields.DetailStats,
 			}
+			tt.want = strings.Replace(tt.want, "startEnd", startEnd, -1)
 			if got := lts.GenLongTermReport(); got != tt.want {
 				t.Errorf("LongTermStats.GenLongTermReport() = %v, want %v", got, tt.want)
 			}
