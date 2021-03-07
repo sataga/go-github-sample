@@ -19,6 +19,8 @@ var (
 	ghMail  = flag.String("ghmail", "", "Github user email")
 	ghToken = flag.String("ghtoken", "", "GitHub Personal access token")
 
+	cnt = 0
+
 	loc, _          = time.LoadLocation("Asia/Tokyo")
 	now             = time.Now()
 	oneWeekBefore   = now.Add(-7 * 24 * time.Hour)
@@ -27,7 +29,7 @@ var (
 	untilStr        = userSupportFlag.String("until", now.Format("2006-01-02"), "Date until listing issues from")
 
 	dailyReportFlag = flag.NewFlagSet("daily-report", flag.ExitOnError)
-	dayAgoInt       = dailyReportFlag.Int("day-ago", 7, "Please specify a date that has not been updated")
+	dailyDayAgoInt  = dailyReportFlag.Int("day-ago", 7, "Please specify a date that has not been updated")
 
 	longtermReportFlag = flag.NewFlagSet("longterm-report", flag.ExitOnError)
 	longtermKindStr    = longtermReportFlag.String("kind", "monthly", "Please choose on (weekly , monthly)")
@@ -35,8 +37,10 @@ var (
 	longtermOriginStr  = longtermReportFlag.String("origin", now.Format("2006-01-02"), "Get the data based on the date you entered")
 
 	analysisReportFlag = flag.NewFlagSet("analysys-report", flag.ExitOnError)
-	stateStr           = analysisReportFlag.String("state", "created", "Please choose on (created , closed)")
-	spanInt            = analysisReportFlag.Int("span", 4, "Please enter the span you want to get")
+	analysisSinceStr   = analysisReportFlag.String("since", oneWeekBefore.Format("2006-01-02"), "Date since listing issues from")
+	analysisUntilStr   = analysisReportFlag.String("until", now.Format("2006-01-02"), "Date until listing issues from")
+	analysisStateStr   = analysisReportFlag.String("state", "created", "Please choose on (created , closed)")
+	analysisSpanInt    = analysisReportFlag.Int("span", 4, "Please enter the span you want to get")
 
 	keywordReportFlag = flag.NewFlagSet("keyword-report", flag.ExitOnError)
 	keywordKindStr    = keywordReportFlag.String("kind", "monthly", "Please choose on (weekly , monthly)")
@@ -83,7 +87,7 @@ func main() {
 		}
 		usrepo := ius.NewUserSupportRepository(ghcli)
 		us := dus.NewUserSupport(usrepo)
-		dairyStats, err := us.GetDailyReportStats(now, *dayAgoInt)
+		dairyStats, err := us.GetDailyReportStats(now, *dailyDayAgoInt)
 		if err != nil {
 			log.Fatalf("get user support stats: %s", err)
 		}
@@ -116,7 +120,6 @@ func main() {
 			SummaryStats: make(map[string]*dus.SummaryStats, *longtermSpanInt),
 			DetailStats:  make(map[int]*dus.DetailStats),
 		}
-		cnt := 0
 		for i := 1; i <= *longtermSpanInt; i++ {
 			result, err := us.GetLongTermReportStats(since, until)
 			for key, val := range result.SummaryStats {
@@ -147,17 +150,28 @@ func main() {
 		us := dus.NewUserSupport(usrepo)
 		var since, until time.Time
 		var err error
-		if since, err = time.Parse("2006-01-02", *sinceStr); err != nil {
-			log.Fatalf("could not parse: %s", *sinceStr)
+		if since, err = time.Parse("2006-01-02", *analysisSinceStr); err != nil {
+			log.Fatalf("could not parse: %s", *analysisSinceStr)
 		}
-		if until, err = time.Parse("2006-01-02", *untilStr); err != nil {
-			log.Fatalf("could not parse: %s", *untilStr)
+		if until, err = time.Parse("2006-01-02", *analysisUntilStr); err != nil {
+			log.Fatalf("could not parse: %s", *analysisUntilStr)
+		}
+		AnalysisStats := &dus.AnalysisStats{
+			DetailStats: make(map[int]*dus.DetailStats),
+		}
+		for i := 1; i <= *analysisSpanInt; i++ {
+			result, err := us.GetAnalysisReportStats(since, until, *analysisStateStr)
+			if err != nil {
+				log.Fatalf("get user support stats: %s", err)
+			}
+			for _, val := range result.DetailStats {
+				AnalysisStats.DetailStats[cnt] = val
+				cnt++
+			}
+			since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
+			until = since.AddDate(0, +1, -1)
 		}
 		// fmt.Printf("Reporting Stats From: %s, Until: %s\n", since, until)
-		AnalysisStats, err := us.GetAnalysisReportStats(since, until, *stateStr, *spanInt)
-		if err != nil {
-			log.Fatalf("get user support stats: %s", err)
-		}
 		fmt.Printf("%s", AnalysisStats.GenAnalysisReport())
 	case "keyword-report":
 		if err := keywordReportFlag.Parse(subCommandArgs[1:]); err != nil {
