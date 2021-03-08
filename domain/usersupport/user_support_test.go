@@ -770,9 +770,9 @@ func Test_userSupport_GetKeywordReportStats(t *testing.T) {
 					startEnd: {
 						Span: startEnd,
 						KeywordCountAsAll: map[string]int{
-							"keyword:Network":    0,
+							"keyword:Network":    1,
 							"keyword:Openstack":  0,
-							"keyword:Kubernetes": 0,
+							"keyword:Kubernetes": 1,
 						},
 						KeywordCountAsEscalation: map[string]int{
 							"keyword:Network":    0,
@@ -835,8 +835,8 @@ func TestKeywordStats_GenKeywordReport(t *testing.T) {
 						Span: startEnd,
 						KeywordCountAsAll: map[string]int{
 							"keyword:Network":    0,
-							"keyword:Openstack":  0,
-							"keyword:Kubernetes": 0,
+							"keyword:Openstack":  1,
+							"keyword:Kubernetes": 1,
 						},
 						KeywordCountAsEscalation: map[string]int{
 							"keyword:Network":    0,
@@ -849,9 +849,9 @@ func TestKeywordStats_GenKeywordReport(t *testing.T) {
 			want: `## サマリー(全体) 
 |項目|startEnd|Total|
 |----|----|----|
-|keyword:Kubernetes|0|0|
+|keyword:Kubernetes|1|1|
 |keyword:Network|0|0|
-|keyword:Openstack|0|0|
+|keyword:Openstack|1|1|
 ## サマリー(Escalationのみ計上) 
 |項目|startEnd|Total|
 |----|----|----|
