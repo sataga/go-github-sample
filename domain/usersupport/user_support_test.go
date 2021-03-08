@@ -126,7 +126,7 @@ func Test_userSupport_GetDailyReportStats(t *testing.T) {
 		args       args
 		want       *DailyStats
 		wantErr    bool
-		beforeFunc func(*fields)
+		beforefunc func(f *fields)
 		afterFunc  func()
 	}{
 		// TODO: Add test cases.
@@ -176,7 +176,7 @@ func Test_userSupport_GetDailyReportStats(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			beforeFunc: func(f *fields) {
+			beforefunc: func(f *fields) {
 				c = gomock.NewController(t)
 				musr := NewMockRepository(c)
 				musr.EXPECT().GetCurrentOpenNotUpdatedSupportIssues(gomock.Any()).Return(updatedIssues, nil)
@@ -189,8 +189,8 @@ func Test_userSupport_GetDailyReportStats(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.beforeFunc != nil {
-				tt.beforeFunc(&tt.fields)
+			if tt.beforefunc != nil {
+				tt.beforefunc(&tt.fields)
 			}
 			if tt.afterFunc != nil {
 				defer tt.afterFunc()
@@ -327,7 +327,7 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 		args       args
 		want       *LongTermStats
 		wantErr    bool
-		beforefunc func(f *fields, since, until time.Time)
+		beforefunc func(f *fields)
 		afterfunc  func()
 	}{
 		// TODO: Add test cases.
@@ -337,7 +337,6 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 				since: firstDayOfMonth,
 				until: lastDayOfMonth,
 			},
-			wantErr: false,
 			want: &LongTermStats{
 				SummaryStats: map[string]*SummaryStats{
 					startEnd: {
@@ -395,19 +394,23 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 					},
 				},
 			},
-			beforefunc: func(f *fields, since, until time.Time) {
+			wantErr: false,
+			beforefunc: func(f *fields) {
 				c = gomock.NewController(t)
 				musr := NewMockRepository(c)
-				musr.EXPECT().GetCreatedSupportIssues(since, until).Return(openIssues, nil)
-				musr.EXPECT().GetClosedSupportIssues(since, until).Return(closeIssues, nil)
+				musr.EXPECT().GetCreatedSupportIssues(gomock.Any(), gomock.Any()).Return(openIssues, nil)
+				musr.EXPECT().GetClosedSupportIssues(gomock.Any(), gomock.Any()).Return(closeIssues, nil)
 				f.repo = musr
+			},
+			afterfunc: func() {
+				c.Finish()
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.beforefunc != nil {
-				tt.beforefunc(&tt.fields, tt.args.since, tt.args.until)
+				tt.beforefunc(&tt.fields)
 			}
 			if tt.afterfunc != nil {
 				defer tt.afterfunc()
@@ -628,6 +631,9 @@ func Test_userSupport_GetAnalysisReportStats(t *testing.T) {
 				}
 				f.repo = musr
 			},
+			afterfunc: func() {
+				c.Finish()
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -755,7 +761,7 @@ func Test_userSupport_GetKeywordReportStats(t *testing.T) {
 		args       args
 		want       *KeywordStats
 		wantErr    bool
-		beforefunc func(*fields)
+		beforefunc func(f *fields)
 		afterfunc  func()
 	}{
 		// TODO: Add test cases.
@@ -782,6 +788,7 @@ func Test_userSupport_GetKeywordReportStats(t *testing.T) {
 					},
 				},
 			},
+			wantErr: false,
 			beforefunc: func(f *fields) {
 				c = gomock.NewController(t)
 				musr := NewMockRepository(c)
