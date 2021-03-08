@@ -95,6 +95,11 @@ var (
 			HTMLURL: github.String("https://github.com/sataga/issue-warehouse/issues/4"),
 		},
 	}
+	keywordPatterns = []*github.LabelResult{
+		{Name: github.String("keyword:Network")},
+		{Name: github.String("keyword:Openstack")},
+		{Name: github.String("keyword:Kubernetes")},
+	}
 )
 
 func Test_userSupport_GetDailyReportStats(t *testing.T) {
@@ -703,6 +708,94 @@ startEnd,issue 2,sevenDayAgo,threeDayAgo,closed,CaaS-A,,中,要望,false,2,96,,h
 			tt.want = strings.Replace(tt.want, "tenDayAgo", tenDayAgo.Format("2006-01-02"), -1)
 			if got := as.GenAnalysisReport(); got != tt.want {
 				t.Errorf("AnalysisStats.GenAnalysisReport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_userSupport_GetKeywordReportStats(t *testing.T) {
+	var c *gomock.Controller
+
+	closeIssues := []*github.Issue{
+		issuePatterns[2],
+		issuePatterns[3],
+	}
+
+	keywords := []*github.LabelResult{
+		keywordPatterns[0],
+		keywordPatterns[1],
+		keywordPatterns[2],
+	}
+	type fields struct {
+		repo Repository
+	}
+	type args struct {
+		since time.Time
+		until time.Time
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		args       args
+		want       *KeywordStats
+		wantErr    bool
+		beforefunc func(*fields)
+		afterfunc  func()
+	}{
+		// TODO: Add test cases.
+		{
+			name: "Normal operation for keyword-monthly-report",
+			args: args{
+				since: firstDayOfMonth,
+				until: lastDayOfMonth,
+			},
+			want: &KeywordStats{
+				KeywordSummary: map[string]*KeywordSummary{
+					startEnd: {
+						Span: startEnd,
+						KeywordCountAsAll: map[string]int{
+							"keyword:Network":    0,
+							"keyword:Openstack":  0,
+							"keyword:Kubernetes": 0,
+						},
+						KeywordCountAsEscalation: map[string]int{
+							"keyword:Network":    0,
+							"keyword:Openstack":  0,
+							"keyword:Kubernetes": 0,
+						},
+					},
+				},
+			},
+			beforefunc: func(f *fields) {
+				c = gomock.NewController(t)
+				musr := NewMockRepository(c)
+				musr.EXPECT().GetLabelsByQuery(gomock.Any()).Return(keywords, nil)
+				musr.EXPECT().GetClosedSupportIssues(gomock.Any(), gomock.Any()).Return(closeIssues, nil)
+				f.repo = musr
+			},
+			afterfunc: func() {
+				c.Finish()
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.beforefunc != nil {
+				tt.beforefunc(&tt.fields)
+			}
+			if tt.afterfunc != nil {
+				defer tt.afterfunc()
+			}
+			us := &userSupport{
+				repo: tt.fields.repo,
+			}
+			got, err := us.GetKeywordReportStats(tt.args.since, tt.args.until)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("userSupport.GetKeywordReportStats() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("userSupport.GetKeywordReportStats() = %v, want %v", got, tt.want)
 			}
 		})
 	}
