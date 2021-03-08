@@ -800,3 +800,60 @@ func Test_userSupport_GetKeywordReportStats(t *testing.T) {
 		})
 	}
 }
+
+func TestKeywordStats_GenKeywordReport(t *testing.T) {
+	type fields struct {
+		KeywordSummary map[string]*KeywordSummary
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		// TODO: Add test cases.
+		{
+			name: "print keyword-report",
+			fields: fields{
+				map[string]*KeywordSummary{
+					startEnd: {
+						Span: startEnd,
+						KeywordCountAsAll: map[string]int{
+							"keyword:Network":    0,
+							"keyword:Openstack":  0,
+							"keyword:Kubernetes": 0,
+						},
+						KeywordCountAsEscalation: map[string]int{
+							"keyword:Network":    0,
+							"keyword:Openstack":  0,
+							"keyword:Kubernetes": 0,
+						},
+					},
+				},
+			},
+			want: `## サマリー(全体) 
+|項目|startEnd|Total|
+|----|----|----|
+|keyword:Kubernetes|0|0|
+|keyword:Network|0|0|
+|keyword:Openstack|0|0|
+## サマリー(Escalationのみ計上) 
+|項目|startEnd|Total|
+|----|----|----|
+|keyword:Kubernetes|0|0|
+|keyword:Network|0|0|
+|keyword:Openstack|0|0|
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ks := &KeywordStats{
+				KeywordSummary: tt.fields.KeywordSummary,
+			}
+			tt.want = strings.Replace(tt.want, "startEnd", startEnd, -1)
+			if got := ks.GenKeywordReport(); got != tt.want {
+				t.Errorf("KeywordStats.GenKeywordReport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
