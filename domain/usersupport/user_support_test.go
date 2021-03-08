@@ -40,6 +40,7 @@ var (
 				{Name: github.String("CaaS-A 対応中")},
 				{Name: github.String("Escalation")},
 				{Name: github.String("genre:通常問合せ")},
+				{Name: github.String("keyword:Kubernetes")},
 			},
 			HTMLURL: github.String("https://github.com/sataga/issue-warehouse/issues/1"),
 		},
@@ -59,6 +60,7 @@ var (
 				{Name: github.String("緊急度：中")},
 				{Name: github.String("CaaS-A 対応中")},
 				{Name: github.String("genre:要望")},
+				{Name: github.String("keyword:Openstack")},
 			},
 			HTMLURL: github.String("https://github.com/sataga/issue-warehouse/issues/2"),
 		},
@@ -75,6 +77,7 @@ var (
 				{Name: github.String("緊急度：高")},
 				{Name: github.String("CaaS-A 対応中")},
 				{Name: github.String("genre:サービス障害")},
+				{Name: github.String("keyword:Network")},
 			},
 			HTMLURL: github.String("https://github.com/sataga/issue-warehouse/issues/3"),
 		},
@@ -91,9 +94,15 @@ var (
 				{Name: github.String("緊急度：低")},
 				{Name: github.String("CaaS-B 対応中")},
 				{Name: github.String("genre:通常問合せ")},
+				{Name: github.String("keyword:Kubernetes")},
 			},
 			HTMLURL: github.String("https://github.com/sataga/issue-warehouse/issues/4"),
 		},
+	}
+	keywordPatterns = []*github.LabelResult{
+		{Name: github.String("keyword:Network")},
+		{Name: github.String("keyword:Openstack")},
+		{Name: github.String("keyword:Kubernetes")},
 	}
 )
 
@@ -145,6 +154,7 @@ func Test_userSupport_GetDailyReportStats(t *testing.T) {
 						TeamName:     "CaaS-A",
 						Urgency:      "高",
 						Genre:        "サービス障害",
+						Labels:       "Network",
 						NumComments:  3,
 						OpenDuration: 119,
 						Escalation:   false,
@@ -158,6 +168,7 @@ func Test_userSupport_GetDailyReportStats(t *testing.T) {
 						TeamName:     "CaaS-B",
 						Urgency:      "低",
 						Genre:        "通常問合せ",
+						Labels:       "Kubernetes",
 						NumComments:  4,
 						OpenDuration: 71,
 						Escalation:   false,
@@ -239,6 +250,7 @@ func TestDailyStats_GetDailyReportStats(t *testing.T) {
 						TargetSpan:   fiveDayAgo.Format("2006-01-02"),
 						TeamName:     "CaaS-A",
 						Urgency:      "高",
+						Labels:       "Network",
 						NumComments:  3,
 						OpenDuration: 119,
 						Escalation:   false,
@@ -251,6 +263,7 @@ func TestDailyStats_GetDailyReportStats(t *testing.T) {
 						TargetSpan:   fiveDayAgo.Format("2006-01-02"),
 						TeamName:     "CaaS-B",
 						Urgency:      "低",
+						Labels:       "Kubernetes",
 						NumComments:  4,
 						OpenDuration: 71,
 						Escalation:   false,
@@ -360,6 +373,7 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 						TeamName:     "CaaS-A",
 						Urgency:      "低",
 						Genre:        "通常問合せ",
+						Labels:       "Kubernetes",
 						NumComments:  1,
 						OpenDuration: 168,
 						Escalation:   true,
@@ -374,6 +388,7 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 						TeamName:     "CaaS-A",
 						Urgency:      "中",
 						Genre:        "要望",
+						Labels:       "Openstack",
 						NumComments:  2,
 						OpenDuration: 96,
 						Escalation:   false,
@@ -471,6 +486,7 @@ func TestLongTermStats_GenLongTermReport(t *testing.T) {
 						TargetSpan:   startEnd,
 						TeamName:     "CaaS-A",
 						Urgency:      "低",
+						Labels:       "Kubernetes",
 						Genre:        "通常問合せ",
 						NumComments:  1,
 						OpenDuration: 168,
@@ -485,6 +501,7 @@ func TestLongTermStats_GenLongTermReport(t *testing.T) {
 						TargetSpan:   startEnd,
 						TeamName:     "CaaS-A",
 						Urgency:      "中",
+						Labels:       "Openstack",
 						Genre:        "要望",
 						NumComments:  2,
 						OpenDuration: 96,
@@ -578,6 +595,7 @@ func Test_userSupport_GetAnalysisReportStats(t *testing.T) {
 						TargetSpan:   startEnd,
 						TeamName:     "CaaS-A",
 						Urgency:      "低",
+						Labels:       "Kubernetes",
 						Genre:        "通常問合せ",
 						NumComments:  1,
 						OpenDuration: 168,
@@ -592,6 +610,7 @@ func Test_userSupport_GetAnalysisReportStats(t *testing.T) {
 						TargetSpan:   startEnd,
 						TeamName:     "CaaS-A",
 						Urgency:      "中",
+						Labels:       "Openstack",
 						Genre:        "要望",
 						NumComments:  2,
 						OpenDuration: 96,
@@ -665,6 +684,7 @@ func TestAnalysisStats_GenAnalysisReport(t *testing.T) {
 						TargetSpan:   startEnd,
 						TeamName:     "CaaS-A",
 						Urgency:      "低",
+						Labels:       "Kubernetes",
 						Genre:        "通常問合せ",
 						NumComments:  1,
 						OpenDuration: 168,
@@ -679,6 +699,7 @@ func TestAnalysisStats_GenAnalysisReport(t *testing.T) {
 						TargetSpan:   startEnd,
 						TeamName:     "CaaS-A",
 						Urgency:      "中",
+						Labels:       "Openstack",
 						Genre:        "要望",
 						NumComments:  2,
 						OpenDuration: 96,
@@ -687,8 +708,8 @@ func TestAnalysisStats_GenAnalysisReport(t *testing.T) {
 				},
 			},
 			want: `期間,Title,起票日,クローズ日,ステータス,担当チーム,担当アサイン,緊急度,問い合わせ種別,エスカレ有無,コメント数,経過時間,Keywordラベル,URL
-startEnd,issue 1,tenDayAgo,threeDayAgo,closed,CaaS-A,,低,通常問合せ,true,1,168,,https://github.com/sataga/issue-warehouse/issues/1 
-startEnd,issue 2,sevenDayAgo,threeDayAgo,closed,CaaS-A,,中,要望,false,2,96,,https://github.com/sataga/issue-warehouse/issues/2 
+startEnd,issue 1,tenDayAgo,threeDayAgo,closed,CaaS-A,,低,通常問合せ,true,1,168,Kubernetes,https://github.com/sataga/issue-warehouse/issues/1 
+startEnd,issue 2,sevenDayAgo,threeDayAgo,closed,CaaS-A,,中,要望,false,2,96,Openstack,https://github.com/sataga/issue-warehouse/issues/2 
 `,
 		},
 	}
@@ -703,6 +724,151 @@ startEnd,issue 2,sevenDayAgo,threeDayAgo,closed,CaaS-A,,中,要望,false,2,96,,h
 			tt.want = strings.Replace(tt.want, "tenDayAgo", tenDayAgo.Format("2006-01-02"), -1)
 			if got := as.GenAnalysisReport(); got != tt.want {
 				t.Errorf("AnalysisStats.GenAnalysisReport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_userSupport_GetKeywordReportStats(t *testing.T) {
+	var c *gomock.Controller
+
+	closeIssues := []*github.Issue{
+		issuePatterns[2],
+		issuePatterns[3],
+	}
+
+	keywords := []*github.LabelResult{
+		keywordPatterns[0],
+		keywordPatterns[1],
+		keywordPatterns[2],
+	}
+	type fields struct {
+		repo Repository
+	}
+	type args struct {
+		since time.Time
+		until time.Time
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		args       args
+		want       *KeywordStats
+		wantErr    bool
+		beforefunc func(*fields)
+		afterfunc  func()
+	}{
+		// TODO: Add test cases.
+		{
+			name: "Normal operation for keyword-monthly-report",
+			args: args{
+				since: firstDayOfMonth,
+				until: lastDayOfMonth,
+			},
+			want: &KeywordStats{
+				KeywordSummary: map[string]*KeywordSummary{
+					startEnd: {
+						Span: startEnd,
+						KeywordCountAsAll: map[string]int{
+							"keyword:Network":    1,
+							"keyword:Openstack":  0,
+							"keyword:Kubernetes": 1,
+						},
+						KeywordCountAsEscalation: map[string]int{
+							"keyword:Network":    0,
+							"keyword:Openstack":  0,
+							"keyword:Kubernetes": 0,
+						},
+					},
+				},
+			},
+			beforefunc: func(f *fields) {
+				c = gomock.NewController(t)
+				musr := NewMockRepository(c)
+				musr.EXPECT().GetLabelsByQuery(gomock.Any()).Return(keywords, nil)
+				musr.EXPECT().GetClosedSupportIssues(gomock.Any(), gomock.Any()).Return(closeIssues, nil)
+				f.repo = musr
+			},
+			afterfunc: func() {
+				c.Finish()
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.beforefunc != nil {
+				tt.beforefunc(&tt.fields)
+			}
+			if tt.afterfunc != nil {
+				defer tt.afterfunc()
+			}
+			us := &userSupport{
+				repo: tt.fields.repo,
+			}
+			got, err := us.GetKeywordReportStats(tt.args.since, tt.args.until)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("userSupport.GetKeywordReportStats() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("userSupport.GetKeywordReportStats() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestKeywordStats_GenKeywordReport(t *testing.T) {
+	type fields struct {
+		KeywordSummary map[string]*KeywordSummary
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		// TODO: Add test cases.
+		{
+			name: "print keyword-report",
+			fields: fields{
+				map[string]*KeywordSummary{
+					startEnd: {
+						Span: startEnd,
+						KeywordCountAsAll: map[string]int{
+							"keyword:Network":    0,
+							"keyword:Openstack":  1,
+							"keyword:Kubernetes": 1,
+						},
+						KeywordCountAsEscalation: map[string]int{
+							"keyword:Network":    0,
+							"keyword:Openstack":  0,
+							"keyword:Kubernetes": 0,
+						},
+					},
+				},
+			},
+			want: `## サマリー(全体) 
+|項目|startEnd|Total|
+|----|----|----|
+|keyword:Kubernetes|1|1|
+|keyword:Network|0|0|
+|keyword:Openstack|1|1|
+## サマリー(Escalationのみ計上) 
+|項目|startEnd|Total|
+|----|----|----|
+|keyword:Kubernetes|0|0|
+|keyword:Network|0|0|
+|keyword:Openstack|0|0|
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ks := &KeywordStats{
+				KeywordSummary: tt.fields.KeywordSummary,
+			}
+			tt.want = strings.Replace(tt.want, "startEnd", startEnd, -1)
+			if got := ks.GenKeywordReport(); got != tt.want {
+				t.Errorf("KeywordStats.GenKeywordReport() = %v, want %v", got, tt.want)
 			}
 		})
 	}
