@@ -687,8 +687,8 @@ func TestAnalysisStats_GenAnalysisReport(t *testing.T) {
 				},
 			},
 			want: `期間,Title,起票日,クローズ日,ステータス,担当チーム,担当アサイン,緊急度,問い合わせ種別,エスカレ有無,コメント数,経過時間,Keywordラベル,URL
-startEnd,issue 1,2021-02-26,2021-03-05,closed,CaaS-A,,低,通常問合せ,true,1,168,,https://github.com/sataga/issue-warehouse/issues/1 
-startEnd,issue 2,2021-03-01,2021-03-05,closed,CaaS-A,,中,要望,false,2,96,,https://github.com/sataga/issue-warehouse/issues/2 
+startEnd,issue 1,tenDayAgo,threeDayAgo,closed,CaaS-A,,低,通常問合せ,true,1,168,,https://github.com/sataga/issue-warehouse/issues/1 
+startEnd,issue 2,sevenDayAgo,threeDayAgo,closed,CaaS-A,,中,要望,false,2,96,,https://github.com/sataga/issue-warehouse/issues/2 
 `,
 		},
 	}
@@ -698,6 +698,9 @@ startEnd,issue 2,2021-03-01,2021-03-05,closed,CaaS-A,,中,要望,false,2,96,,htt
 				DetailStats: tt.fields.DetailStats,
 			}
 			tt.want = strings.Replace(tt.want, "startEnd", startEnd, -1)
+			tt.want = strings.Replace(tt.want, "threeDayAgo", threeDayAgo.Format("2006-01-02"), -1)
+			tt.want = strings.Replace(tt.want, "sevenDayAgo", sevenDayAgo.Format("2006-01-02"), -1)
+			tt.want = strings.Replace(tt.want, "tenDayAgo", tenDayAgo.Format("2006-01-02"), -1)
 			if got := as.GenAnalysisReport(); got != tt.want {
 				t.Errorf("AnalysisStats.GenAnalysisReport() = %v, want %v", got, tt.want)
 			}
