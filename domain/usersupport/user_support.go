@@ -24,7 +24,7 @@ type UserSupport interface {
 	GetDailyReportStats(now time.Time, dayAgo int) (*DailyStats, error)
 	GetLongTermReportStats(since, until time.Time) (*LongTermStats, error)
 	GetAnalysisReportStats(since, until time.Time, state string) (*AnalysisStats, error)
-	GetKeywordReportStats(until time.Time, kind string, span int) (*KeywordStats, error)
+	GetKeywordReportStats(since, until time.Time) (*KeywordStats, error)
 	MethodTest(since, until time.Time) (*AnalysisStats, error)
 	// GenMonthlyReport(data map[string]*LongTermStats) string
 }
@@ -462,59 +462,39 @@ func (as *AnalysisStats) GenAnalysisReport() string {
 	return sb.String()
 }
 
-func (us *userSupport) GetKeywordReportStats(until time.Time, kind string, span int) (*KeywordStats, error) {
-	var since time.Time
-	loc, _ := time.LoadLocation("Asia/Tokyo")
-	switch kind {
-	case "weekly":
-		since = until.AddDate(0, 0, -7)
-	case "monthly":
-		since = time.Date(until.Year(), until.Month(), 1, 0, 0, 0, 0, loc)
-		until = since.AddDate(0, +1, -1)
-	}
+func (us *userSupport) GetKeywordReportStats(since, until time.Time) (*KeywordStats, error) {
 	keywords, _ := us.repo.GetLabelsByQuery("keyword:")
 	KeywordStats := &KeywordStats{
-		KeywordSummary: make(map[string]*KeywordSummary, span),
+		KeywordSummary: make(map[string]*KeywordSummary),
+	}
+	startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
+	cli, err := us.repo.GetClosedSupportIssues(since, until)
+	if err != nil {
+		return nil, fmt.Errorf("get closed issues : %s", err)
 	}
 
-	for i := 1; i <= span; i++ {
-		startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
-		cli, err := us.repo.GetClosedSupportIssues(since, until)
-		if err != nil {
-			return nil, fmt.Errorf("get closed issues : %s", err)
+	KeywordStats.KeywordSummary[startEnd] = &KeywordSummary{
+		Span:                     startEnd,
+		KeywordCountAsAll:        make(map[string]int, len(keywords)),
+		KeywordCountAsEscalation: make(map[string]int, len(keywords)),
+	}
+	for _, label := range keywords {
+		if _, ok := KeywordStats.KeywordSummary[startEnd].KeywordCountAsAll[*label.Name]; !ok {
+			KeywordStats.KeywordSummary[startEnd].KeywordCountAsAll[*label.Name] = 0
+			KeywordStats.KeywordSummary[startEnd].KeywordCountAsEscalation[*label.Name] = 0
 		}
 
-		KeywordStats.KeywordSummary[startEnd] = &KeywordSummary{
-			Span:                     startEnd,
-			KeywordCountAsAll:        make(map[string]int, len(keywords)),
-			KeywordCountAsEscalation: make(map[string]int, len(keywords)),
-		}
-		for _, label := range keywords {
-			if _, ok := KeywordStats.KeywordSummary[startEnd].KeywordCountAsAll[*label.Name]; !ok {
-				KeywordStats.KeywordSummary[startEnd].KeywordCountAsAll[*label.Name] = 0
-				KeywordStats.KeywordSummary[startEnd].KeywordCountAsEscalation[*label.Name] = 0
-			}
-
-			for _, issue := range cli {
-				if labelContains(issue.Labels, *label.Name) {
-					if val, ok := KeywordStats.KeywordSummary[startEnd].KeywordCountAsAll[*label.Name]; ok {
-						KeywordStats.KeywordSummary[startEnd].KeywordCountAsAll[*label.Name] = val + 1
-					}
-					if labelContains(issue.Labels, "Escalation") {
-						if val, ok := KeywordStats.KeywordSummary[startEnd].KeywordCountAsEscalation[*label.Name]; ok {
-							KeywordStats.KeywordSummary[startEnd].KeywordCountAsEscalation[*label.Name] = val + 1
-						}
+		for _, issue := range cli {
+			if labelContains(issue.Labels, *label.Name) {
+				if val, ok := KeywordStats.KeywordSummary[startEnd].KeywordCountAsAll[*label.Name]; ok {
+					KeywordStats.KeywordSummary[startEnd].KeywordCountAsAll[*label.Name] = val + 1
+				}
+				if labelContains(issue.Labels, "Escalation") {
+					if val, ok := KeywordStats.KeywordSummary[startEnd].KeywordCountAsEscalation[*label.Name]; ok {
+						KeywordStats.KeywordSummary[startEnd].KeywordCountAsEscalation[*label.Name] = val + 1
 					}
 				}
 			}
-		}
-		switch kind {
-		case "weekly":
-			since = until.AddDate(0, 0, -7)
-			until = until.AddDate(0, 0, -7)
-		case "monthly":
-			since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
-			until = since.AddDate(0, +1, -1)
 		}
 	}
 	return KeywordStats, nil

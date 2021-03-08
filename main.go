@@ -179,14 +179,40 @@ func main() {
 		}
 		usrepo := ius.NewUserSupportRepository(ghcli)
 		us := dus.NewUserSupport(usrepo)
-		var until time.Time
+		var since, until time.Time
 		var err error
 		if until, err = time.ParseInLocation("2006-01-02", *keywordUntilStr, jst); err != nil {
 			log.Fatalf("could not parse: %s", err)
 		}
-		KeywordStats, err := us.GetKeywordReportStats(until, *keywordKindStr, *keywordSpanInt)
-		if err != nil {
-			log.Fatalf("get keyword stats: %s", err)
+		switch *keywordKindStr {
+		case "weekly":
+			since = until.AddDate(0, 0, -7)
+		case "monthly":
+			since = time.Date(until.Year(), until.Month(), 1, 0, 0, 0, 0, loc)
+			until = since.AddDate(0, +1, -1)
+		}
+		KeywordStats := &dus.KeywordStats{
+			KeywordSummary: make(map[string]*dus.KeywordSummary),
+		}
+		for i := 1; i <= *longtermSpanInt; i++ {
+			result, err := us.GetKeywordReportStats(since, until)
+			if err != nil {
+				log.Fatalf("get keyword stats: %s", err)
+			}
+			for key, val := range result.KeywordSummary {
+				KeywordStats.KeywordSummary[key] = val
+			}
+			if err != nil {
+				log.Fatalf("get longterm stats: %s", err)
+			}
+			switch *longtermKindStr {
+			case "weekly":
+				since = since.AddDate(0, 0, -7)
+				until = until.AddDate(0, 0, -7)
+			case "monthly":
+				since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
+				until = since.AddDate(0, +1, -1)
+			}
 		}
 		fmt.Printf("%s", KeywordStats.GenKeywordReport())
 
