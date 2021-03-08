@@ -23,7 +23,7 @@ var (
 type UserSupport interface {
 	GetDailyReportStats(now time.Time, dayAgo int) (*DailyStats, error)
 	GetLongTermReportStats(since, until time.Time) (*LongTermStats, error)
-	GetAnalysisReportStats(since, until time.Time, state string, span int) (*AnalysisStats, error)
+	GetAnalysisReportStats(since, until time.Time, state string) (*AnalysisStats, error)
 	GetKeywordReportStats(until time.Time, kind string, span int) (*KeywordStats, error)
 	MethodTest(since, until time.Time) (*AnalysisStats, error)
 	// GenMonthlyReport(data map[string]*LongTermStats) string
@@ -403,41 +403,36 @@ func (lts *LongTermStats) GenLongTermReport() string {
 	return sb.String()
 }
 
-func (us *userSupport) GetAnalysisReportStats(since, until time.Time, state string, span int) (*AnalysisStats, error) {
+func (us *userSupport) GetAnalysisReportStats(since, until time.Time, state string) (*AnalysisStats, error) {
 
 	loc, _ := time.LoadLocation("Asia/Tokyo")
 	since = time.Date(since.Year(), since.Month(), 1, 0, 0, 0, 0, loc)
 	until = since.AddDate(0, +1, -1)
 	AnalysisStats := &AnalysisStats{
-		DetailStats: make(map[int]*DetailStats, span),
+		DetailStats: make(map[int]*DetailStats),
 	}
 
 	cnt := 0
-	for i := 1; i <= span; i++ {
-		startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
-		var iss []*github.Issue
-		var err error
-		if state == "created" {
-			iss, err = us.repo.GetCreatedSupportIssues(since, until)
-			if err != nil {
-				return nil, fmt.Errorf("get created issue : %s", err)
-			}
-
-		} else {
-			iss, err = us.repo.GetClosedSupportIssues(since, until)
-			if err != nil {
-				return nil, fmt.Errorf("get closed issue : %s", err)
-			}
+	startEnd := fmt.Sprintf("%s~%s", since.Format("2006-01-02"), until.Format("2006-01-02"))
+	var iss []*github.Issue
+	var err error
+	if state == "created" {
+		iss, err = us.repo.GetCreatedSupportIssues(since, until)
+		if err != nil {
+			return nil, fmt.Errorf("get created issue : %s", err)
 		}
-		for _, issue := range iss {
-			AnalysisStats.DetailStats[cnt] = &DetailStats{
-				Escalation: false,
-			}
-			AnalysisStats.DetailStats[cnt].writeDetailStats(issue, startEnd)
-			cnt++
+	} else {
+		iss, err = us.repo.GetClosedSupportIssues(since, until)
+		if err != nil {
+			return nil, fmt.Errorf("get closed issue : %s", err)
 		}
-		since = time.Date(since.Year(), since.Month()-1, 1, 0, 0, 0, 0, loc)
-		until = since.AddDate(0, +1, -1)
+	}
+	for _, issue := range iss {
+		AnalysisStats.DetailStats[cnt] = &DetailStats{
+			Escalation: false,
+		}
+		AnalysisStats.DetailStats[cnt].writeDetailStats(issue, startEnd)
+		cnt++
 	}
 
 	return AnalysisStats, nil

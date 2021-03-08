@@ -293,13 +293,14 @@ func TestDailyStats_GetDailyReportStats(t *testing.T) {
 func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 	var c *gomock.Controller
 
-	testIssues := []*github.Issue{
+	closeIssues := []*github.Issue{
 		issuePatterns[0],
 		issuePatterns[1],
+	}
+	openIssues := []*github.Issue{
 		issuePatterns[2],
 		issuePatterns[3],
 	}
-
 	type fields struct {
 		repo Repository
 	}
@@ -328,7 +329,7 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 				SummaryStats: map[string]*SummaryStats{
 					startEnd: {
 						Span:                       startEnd,
-						NumCreatedIssues:           3,
+						NumCreatedIssues:           2,
 						NumClosedIssues:            2,
 						NumGenreNormalIssues:       1,
 						NumGenreRequestIssues:      1,
@@ -382,10 +383,8 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 			beforefunc: func(f *fields, since, until time.Time) {
 				c = gomock.NewController(t)
 				musr := NewMockRepository(c)
-				cri := getCreatedIssue(since, until, testIssues)
-				cli := getClosedIssue(since, until, testIssues)
-				musr.EXPECT().GetCreatedSupportIssues(since, until).Return(cri, nil)
-				musr.EXPECT().GetClosedSupportIssues(since, until).Return(cli, nil)
+				musr.EXPECT().GetCreatedSupportIssues(since, until).Return(openIssues, nil)
+				musr.EXPECT().GetClosedSupportIssues(since, until).Return(closeIssues, nil)
 				f.repo = musr
 			},
 		},
@@ -423,26 +422,6 @@ func Test_userSupport_GetLongTermReportStats(t *testing.T) {
 			}
 		})
 	}
-}
-
-func getCreatedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
-	iss := make([]*github.Issue, 0, len(issues))
-	for _, is := range issues {
-		if is.CreatedAt != nil && is.CreatedAt.After(since) && is.CreatedAt.Before(until) {
-			iss = append(iss, is)
-		}
-	}
-	return iss
-}
-
-func getClosedIssue(since, until time.Time, issues []*github.Issue) []*github.Issue {
-	iss := make([]*github.Issue, 0, len(issues))
-	for _, is := range issues {
-		if is.ClosedAt != nil && is.ClosedAt.After(since) && is.ClosedAt.Before(until) {
-			iss = append(iss, is)
-		}
-	}
-	return iss
 }
 
 func TestLongTermStats_GenLongTermReport(t *testing.T) {
@@ -550,6 +529,180 @@ func TestLongTermStats_GenLongTermReport(t *testing.T) {
 			tt.want = strings.Replace(tt.want, "startEnd", startEnd, -1)
 			if got := lts.GenLongTermReport(); got != tt.want {
 				t.Errorf("LongTermStats.GenLongTermReport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_userSupport_GetAnalysisReportStats(t *testing.T) {
+	var c *gomock.Controller
+
+	testIssues := []*github.Issue{
+		issuePatterns[0],
+		issuePatterns[1],
+	}
+	type fields struct {
+		repo Repository
+	}
+	type args struct {
+		since time.Time
+		until time.Time
+		state string
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		args       args
+		want       *AnalysisStats
+		wantErr    bool
+		beforefunc func(f *fields, state string)
+		afterfunc  func()
+	}{
+		// TODO: Add test cases.
+		{
+			name: "Normal operation for created",
+			args: args{
+				since: firstDayOfMonth,
+				until: lastDayOfMonth,
+				state: "created",
+			},
+			wantErr: false,
+			want: &AnalysisStats{
+				DetailStats: map[int]*DetailStats{
+					0: {
+						Title:        "issue 1",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/1",
+						CreatedAt:    tenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "低",
+						Genre:        "通常問合せ",
+						NumComments:  1,
+						OpenDuration: 168,
+						Escalation:   true,
+					},
+					1: {
+						Title:        "issue 2",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/2",
+						CreatedAt:    sevenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "中",
+						Genre:        "要望",
+						NumComments:  2,
+						OpenDuration: 96,
+						Escalation:   false,
+					},
+				},
+			},
+			beforefunc: func(f *fields, state string) {
+				c = gomock.NewController(t)
+				musr := NewMockRepository(c)
+				if state == "created" {
+					musr.EXPECT().GetCreatedSupportIssues(gomock.Any(), gomock.Any()).Return(testIssues, nil)
+				} else {
+					musr.EXPECT().GetClosedSupportIssues(gomock.Any(), gomock.Any()).Return(testIssues, nil)
+				}
+				f.repo = musr
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.beforefunc != nil {
+				tt.beforefunc(&tt.fields, tt.args.state)
+			}
+			if tt.afterfunc != nil {
+				defer tt.afterfunc()
+			}
+			us := &userSupport{
+				repo: tt.fields.repo,
+			}
+			got, err := us.GetAnalysisReportStats(tt.args.since, tt.args.until, tt.args.state)
+			// for k, v := range tt.want.DetailStats {
+			// 	fmt.Printf("want:%d", k)
+			// 	fmt.Println(v)
+			// }
+			// for k, v := range got.DetailStats {
+			// 	fmt.Printf("got :%d", k)
+			// 	fmt.Println(v)
+			// }
+			if (err != nil) != tt.wantErr {
+				t.Errorf("userSupport.GetAnalysisReportStats() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("userSupport.GetAnalysisReportStats() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAnalysisStats_GenAnalysisReport(t *testing.T) {
+	type fields struct {
+		DetailStats map[int]*DetailStats
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		// TODO: Add test cases.
+		{
+			name: "print analysis-report",
+			fields: fields{
+				DetailStats: map[int]*DetailStats{
+					0: {
+						Title:        "issue 1",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/1",
+						CreatedAt:    tenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "低",
+						Genre:        "通常問合せ",
+						NumComments:  1,
+						OpenDuration: 168,
+						Escalation:   true,
+					},
+					1: {
+						Title:        "issue 2",
+						HTMLURL:      "https://github.com/sataga/issue-warehouse/issues/2",
+						CreatedAt:    sevenDayAgo.Format("2006-01-02"),
+						ClosedAt:     threeDayAgo.Format("2006-01-02"),
+						State:        "closed",
+						TargetSpan:   startEnd,
+						TeamName:     "CaaS-A",
+						Urgency:      "中",
+						Genre:        "要望",
+						NumComments:  2,
+						OpenDuration: 96,
+						Escalation:   false,
+					},
+				},
+			},
+			want: `期間,Title,起票日,クローズ日,ステータス,担当チーム,担当アサイン,緊急度,問い合わせ種別,エスカレ有無,コメント数,経過時間,Keywordラベル,URL
+startEnd,issue 1,tenDayAgo,threeDayAgo,closed,CaaS-A,,低,通常問合せ,true,1,168,,https://github.com/sataga/issue-warehouse/issues/1 
+startEnd,issue 2,sevenDayAgo,threeDayAgo,closed,CaaS-A,,中,要望,false,2,96,,https://github.com/sataga/issue-warehouse/issues/2 
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			as := &AnalysisStats{
+				DetailStats: tt.fields.DetailStats,
+			}
+			tt.want = strings.Replace(tt.want, "startEnd", startEnd, -1)
+			tt.want = strings.Replace(tt.want, "threeDayAgo", threeDayAgo.Format("2006-01-02"), -1)
+			tt.want = strings.Replace(tt.want, "sevenDayAgo", sevenDayAgo.Format("2006-01-02"), -1)
+			tt.want = strings.Replace(tt.want, "tenDayAgo", tenDayAgo.Format("2006-01-02"), -1)
+			if got := as.GenAnalysisReport(); got != tt.want {
+				t.Errorf("AnalysisStats.GenAnalysisReport() = %v, want %v", got, tt.want)
 			}
 		})
 	}
