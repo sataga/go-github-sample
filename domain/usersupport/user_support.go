@@ -512,6 +512,7 @@ func (ks *KeywordStats) GenKeywordReport() string {
 		Val int
 	}
 	var sb strings.Builder
+	var keyCnt int
 	var Span []string
 	var kvArrForSummary []kvSummary
 	var kvArrForCountAsAll []kvCount
@@ -558,15 +559,24 @@ func (ks *KeywordStats) GenKeywordReport() string {
 	}
 	sb.WriteString(fmt.Sprintf("----|\n"))
 
-	for k, v := range kvArrForResultAsAll {
-		sb.WriteString(fmt.Sprintf("|%s", k))
+	printForResultAsAll := make([]string, len(kvArrForResultAsAll))
+	keyCnt = 0
+	for key := range kvArrForResultAsAll {
+		printForResultAsAll[keyCnt] = key
+		keyCnt++
+	}
+	sort.Strings(printForResultAsAll)
+	for i := 0; i < len(printForResultAsAll); i++ {
+		sb.WriteString(fmt.Sprintf("|%s", printForResultAsAll[i]))
 		total := 0
-		for _, d := range v {
-			sb.WriteString(fmt.Sprintf("|%d", d))
-			total = total + d
+		for j := 0; j < len(kvArrForResultAsAll[printForResultAsAll[i]]); j++ {
+
+			sb.WriteString(fmt.Sprintf("|%d", kvArrForResultAsAll[printForResultAsAll[i]][j]))
+			total = total + kvArrForResultAsAll[printForResultAsAll[i]][j]
 		}
 		sb.WriteString(fmt.Sprintf("|%d|\n", total))
 	}
+
 	sb.WriteString(fmt.Sprintf("## サマリー(Escalationのみ計上) \n"))
 	sb.WriteString(fmt.Sprintf("|項目|"))
 	sb.WriteString(fmt.Sprintf("%s|Total|\n", strings.Join(Span, "|")))
@@ -576,16 +586,23 @@ func (ks *KeywordStats) GenKeywordReport() string {
 	}
 	sb.WriteString(fmt.Sprintf("----|\n"))
 
-	for k, v := range kvArrForResultAsEscalation {
-		sb.WriteString(fmt.Sprintf("|%s", k))
+	printForResultAsEscalation := make([]string, len(kvArrForResultAsEscalation))
+	keyCnt = 0
+	for key := range kvArrForResultAsEscalation {
+		printForResultAsEscalation[keyCnt] = key
+		keyCnt++
+	}
+	sort.Strings(printForResultAsEscalation)
+	for i := 0; i < len(printForResultAsEscalation); i++ {
+		sb.WriteString(fmt.Sprintf("|%s", printForResultAsEscalation[i]))
 		total := 0
-		for _, d := range v {
-			sb.WriteString(fmt.Sprintf("|%d", d))
-			total = total + d
+		for j := 0; j < len(kvArrForResultAsEscalation[printForResultAsEscalation[i]]); j++ {
+
+			sb.WriteString(fmt.Sprintf("|%d", kvArrForResultAsEscalation[printForResultAsEscalation[i]][j]))
+			total = total + kvArrForResultAsEscalation[printForResultAsEscalation[i]][j]
 		}
 		sb.WriteString(fmt.Sprintf("|%d|\n", total))
 	}
-
 	return sb.String()
 
 }
