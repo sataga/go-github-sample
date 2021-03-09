@@ -398,8 +398,26 @@ func (lts *LongTermStats) GenLongTermReport() string {
 
 	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
 	for _, d := range kvArrForDetail {
+		fmt.Printf("range:%d\n", d.Key)
 		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", d.Val.Title, d.Val.HTMLURL, d.Val.Urgency, d.Val.Genre, d.Val.TeamName, d.Val.Assignee, d.Val.NumComments, d.Val.OpenDuration, d.Val.Escalation, d.Val.TargetSpan))
 	}
+
+	printForDetail := make([]int, len(kvArrForDetail))
+	keyCnt := 0
+	for key := range kvArrForDetail {
+		printForDetail[keyCnt] = key
+		keyCnt++
+	}
+	sort.Ints(printForDetail)
+	for i := 0; i < len(printForDetail); i++ {
+		fmt.Printf("loop:%d\n", printForDetail[i])
+		// for j := 0; j < len(kvArrForDetail[printForDetail[i]]); j++ {
+
+		// 	sb.WriteString(fmt.Sprintf("|%d", kvArrForDetail[printForDetail[i]][j]))
+		// }
+		// sb.WriteString(fmt.Sprintf("|%d|\n", total))
+	}
+
 	return sb.String()
 }
 
