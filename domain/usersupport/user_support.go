@@ -400,8 +400,8 @@ func (lts *LongTermStats) GenLongTermReport() string {
 
 	printForDetail := make([]int, len(kvArrForDetail))
 	keyCnt := 0
-	for key := range kvArrForDetail {
-		printForDetail[keyCnt] = key
+	for i := 0; i < len(printForDetail); i++ {
+		printForDetail[keyCnt] = kvArrForDetail[i].Key
 		keyCnt++
 	}
 	sort.Ints(printForDetail)
