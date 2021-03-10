@@ -324,9 +324,16 @@ func (lts *LongTermStats) GenLongTermReport() string {
 	for k, v := range lts.DetailStats {
 		kvArrForDetail = append(kvArrForDetail, kvDetail{k, v})
 	}
-	// sort by Span
+	// sort by Span and OpenDuration
 	sort.Slice(kvArrForDetail, func(i, j int) bool {
-		return kvArrForDetail[i].Val.TargetSpan < kvArrForDetail[j].Val.TargetSpan
+		if kvArrForDetail[i].Val.TargetSpan > kvArrForDetail[j].Val.TargetSpan {
+			return true
+		} else if kvArrForDetail[i].Val.TargetSpan == kvArrForDetail[j].Val.TargetSpan {
+			if kvArrForDetail[i].Val.OpenDuration > kvArrForDetail[j].Val.OpenDuration {
+				return true
+			}
+		}
+		return false
 	})
 
 	for _, d := range kvArrForSummary {
@@ -398,15 +405,8 @@ func (lts *LongTermStats) GenLongTermReport() string {
 
 	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
 
-	printForDetail := make([]int, len(kvArrForDetail))
-	keyCnt := 0
-	for i := 0; i < len(printForDetail); i++ {
-		printForDetail[keyCnt] = kvArrForDetail[i].Key
-		keyCnt++
-	}
-	sort.Ints(printForDetail)
-	for i := 0; i < len(printForDetail); i++ {
-		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", kvArrForDetail[printForDetail[i]].Val.Title, kvArrForDetail[printForDetail[i]].Val.HTMLURL, kvArrForDetail[printForDetail[i]].Val.Urgency, kvArrForDetail[printForDetail[i]].Val.Genre, kvArrForDetail[printForDetail[i]].Val.TeamName, kvArrForDetail[printForDetail[i]].Val.Assignee, kvArrForDetail[printForDetail[i]].Val.NumComments, kvArrForDetail[printForDetail[i]].Val.OpenDuration, kvArrForDetail[printForDetail[i]].Val.Escalation, kvArrForDetail[printForDetail[i]].Val.TargetSpan))
+	for i := 0; i < len(kvArrForDetail); i++ {
+		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", kvArrForDetail[i].Val.Title, kvArrForDetail[i].Val.HTMLURL, kvArrForDetail[i].Val.Urgency, kvArrForDetail[i].Val.Genre, kvArrForDetail[i].Val.TeamName, kvArrForDetail[i].Val.Assignee, kvArrForDetail[i].Val.NumComments, kvArrForDetail[i].Val.OpenDuration, kvArrForDetail[i].Val.Escalation, kvArrForDetail[i].Val.TargetSpan))
 	}
 
 	return sb.String()
