@@ -156,6 +156,8 @@ func main() {
 		if until, err = time.Parse("2006-01-02", *analysisUntilStr); err != nil {
 			log.Fatalf("could not parse: %s", *analysisUntilStr)
 		}
+		since = time.Date(since.Year(), since.Month(), 1, 0, 0, 0, 0, loc)
+		until = since.AddDate(0, +1, -1)
 		AnalysisStats := &dus.AnalysisStats{
 			DetailStats: make(map[int]*dus.DetailStats),
 		}

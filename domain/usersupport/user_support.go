@@ -324,9 +324,16 @@ func (lts *LongTermStats) GenLongTermReport() string {
 	for k, v := range lts.DetailStats {
 		kvArrForDetail = append(kvArrForDetail, kvDetail{k, v})
 	}
-	// sort by Span
+	// sort by Span and OpenDuration
 	sort.Slice(kvArrForDetail, func(i, j int) bool {
-		return kvArrForDetail[i].Val.TargetSpan < kvArrForDetail[j].Val.TargetSpan
+		if kvArrForDetail[i].Val.TargetSpan > kvArrForDetail[j].Val.TargetSpan {
+			return true
+		} else if kvArrForDetail[i].Val.TargetSpan == kvArrForDetail[j].Val.TargetSpan {
+			if kvArrForDetail[i].Val.OpenDuration > kvArrForDetail[j].Val.OpenDuration {
+				return true
+			}
+		}
+		return false
 	})
 
 	for _, d := range kvArrForSummary {
@@ -397,17 +404,16 @@ func (lts *LongTermStats) GenLongTermReport() string {
 	sb.WriteString(fmt.Sprintf("\n"))
 
 	sb.WriteString(fmt.Sprintf("## 詳細 \n"))
-	for _, d := range kvArrForDetail {
-		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", d.Val.Title, d.Val.HTMLURL, d.Val.Urgency, d.Val.Genre, d.Val.TeamName, d.Val.Assignee, d.Val.NumComments, d.Val.OpenDuration, d.Val.Escalation, d.Val.TargetSpan))
+
+	for i := 0; i < len(kvArrForDetail); i++ {
+		sb.WriteString(fmt.Sprintf("- [%s](%s),%s,%s,%s/%s,comment数:%d,経過時間(hour):%d,解決フラグ:%t,(%s)\n", kvArrForDetail[i].Val.Title, kvArrForDetail[i].Val.HTMLURL, kvArrForDetail[i].Val.Urgency, kvArrForDetail[i].Val.Genre, kvArrForDetail[i].Val.TeamName, kvArrForDetail[i].Val.Assignee, kvArrForDetail[i].Val.NumComments, kvArrForDetail[i].Val.OpenDuration, kvArrForDetail[i].Val.Escalation, kvArrForDetail[i].Val.TargetSpan))
 	}
+
 	return sb.String()
 }
 
 func (us *userSupport) GetAnalysisReportStats(since, until time.Time, state string) (*AnalysisStats, error) {
 
-	loc, _ := time.LoadLocation("Asia/Tokyo")
-	since = time.Date(since.Year(), since.Month(), 1, 0, 0, 0, 0, loc)
-	until = since.AddDate(0, +1, -1)
 	AnalysisStats := &AnalysisStats{
 		DetailStats: make(map[int]*DetailStats),
 	}
@@ -512,6 +518,7 @@ func (ks *KeywordStats) GenKeywordReport() string {
 		Val int
 	}
 	var sb strings.Builder
+	var keyCnt int
 	var Span []string
 	var kvArrForSummary []kvSummary
 	var kvArrForCountAsAll []kvCount
@@ -558,15 +565,24 @@ func (ks *KeywordStats) GenKeywordReport() string {
 	}
 	sb.WriteString(fmt.Sprintf("----|\n"))
 
-	for k, v := range kvArrForResultAsAll {
-		sb.WriteString(fmt.Sprintf("|%s", k))
+	printForResultAsAll := make([]string, len(kvArrForResultAsAll))
+	keyCnt = 0
+	for key := range kvArrForResultAsAll {
+		printForResultAsAll[keyCnt] = key
+		keyCnt++
+	}
+	sort.Strings(printForResultAsAll)
+	for i := 0; i < len(printForResultAsAll); i++ {
+		sb.WriteString(fmt.Sprintf("|%s", printForResultAsAll[i]))
 		total := 0
-		for _, d := range v {
-			sb.WriteString(fmt.Sprintf("|%d", d))
-			total = total + d
+		for j := 0; j < len(kvArrForResultAsAll[printForResultAsAll[i]]); j++ {
+
+			sb.WriteString(fmt.Sprintf("|%d", kvArrForResultAsAll[printForResultAsAll[i]][j]))
+			total = total + kvArrForResultAsAll[printForResultAsAll[i]][j]
 		}
 		sb.WriteString(fmt.Sprintf("|%d|\n", total))
 	}
+
 	sb.WriteString(fmt.Sprintf("## サマリー(Escalationのみ計上) \n"))
 	sb.WriteString(fmt.Sprintf("|項目|"))
 	sb.WriteString(fmt.Sprintf("%s|Total|\n", strings.Join(Span, "|")))
@@ -576,16 +592,23 @@ func (ks *KeywordStats) GenKeywordReport() string {
 	}
 	sb.WriteString(fmt.Sprintf("----|\n"))
 
-	for k, v := range kvArrForResultAsEscalation {
-		sb.WriteString(fmt.Sprintf("|%s", k))
+	printForResultAsEscalation := make([]string, len(kvArrForResultAsEscalation))
+	keyCnt = 0
+	for key := range kvArrForResultAsEscalation {
+		printForResultAsEscalation[keyCnt] = key
+		keyCnt++
+	}
+	sort.Strings(printForResultAsEscalation)
+	for i := 0; i < len(printForResultAsEscalation); i++ {
+		sb.WriteString(fmt.Sprintf("|%s", printForResultAsEscalation[i]))
 		total := 0
-		for _, d := range v {
-			sb.WriteString(fmt.Sprintf("|%d", d))
-			total = total + d
+		for j := 0; j < len(kvArrForResultAsEscalation[printForResultAsEscalation[i]]); j++ {
+
+			sb.WriteString(fmt.Sprintf("|%d", kvArrForResultAsEscalation[printForResultAsEscalation[i]][j]))
+			total = total + kvArrForResultAsEscalation[printForResultAsEscalation[i]][j]
 		}
 		sb.WriteString(fmt.Sprintf("|%d|\n", total))
 	}
-
 	return sb.String()
 
 }
