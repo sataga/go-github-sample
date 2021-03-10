@@ -414,9 +414,6 @@ func (lts *LongTermStats) GenLongTermReport() string {
 
 func (us *userSupport) GetAnalysisReportStats(since, until time.Time, state string) (*AnalysisStats, error) {
 
-	loc, _ := time.LoadLocation("Asia/Tokyo")
-	since = time.Date(since.Year(), since.Month(), 1, 0, 0, 0, 0, loc)
-	until = since.AddDate(0, +1, -1)
 	AnalysisStats := &AnalysisStats{
 		DetailStats: make(map[int]*DetailStats),
 	}
