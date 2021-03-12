@@ -246,6 +246,11 @@ func main() {
 			log.Fatalf("get user support stats: %s", err)
 		}
 		fmt.Printf("%v", testStats)
+	case "get-pj-board":
+		usrepo := ius.NewUserSupportRepository(ghcli)
+		us := dus.NewUserSupport(usrepo)
+		result := us.GetProjectBoard()
+		fmt.Printf("%s", result)
 	}
 
 }
